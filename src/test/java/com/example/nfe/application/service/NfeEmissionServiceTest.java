@@ -23,12 +23,14 @@ import com.example.nfe.domain.IbsMunicipalityTax;
 import com.example.nfe.domain.IbsUfTax;
 import com.example.nfe.domain.IcmsStTax;
 import com.example.nfe.domain.IcmsTax;
+import com.example.nfe.domain.IcmsTotals;
 import com.example.nfe.domain.ImportTax;
 import com.example.nfe.domain.IpiTax;
 import com.example.nfe.domain.IsTax;
 import com.example.nfe.domain.ItemTaxation;
 import com.example.nfe.domain.PisCofinsTax;
 import com.example.nfe.domain.RtcTaxation;
+import com.example.nfe.domain.TaxTotals;
 import com.example.nfe.domain.EmissionStatus;
 import com.example.nfe.domain.NfeEmission;
 import com.example.nfe.domain.NfeItem;
@@ -602,6 +604,29 @@ class NfeEmissionServiceTest {
     }
 
     @Test
+    void shouldMapTaxTotalsToDomain() {
+        TaxTotals expected = taxTotals();
+        NfeEmission emission = service.toDomain("emission-22", requestWithTaxTotals());
+
+        assertNotNull(emission.taxTotals());
+        assertEquals(expected, emission.taxTotals(),
+                "tax totals must pass through without transformation");
+        assertEquals(new BigDecimal("11.00"), emission.taxTotals().icms().base());
+        assertEquals(new BigDecimal("1.98"), emission.taxTotals().icms().amount());
+        assertEquals(new BigDecimal("0.30"), emission.taxTotals().icms().fcpUfDestination());
+        assertEquals(new BigDecimal("0.60"), emission.taxTotals().importTaxAmount());
+        assertEquals(new BigDecimal("0.90"), emission.taxTotals().pisAmount());
+        assertEquals(new BigDecimal("2.15"), emission.taxTotals().totalTaxValue());
+    }
+
+    @Test
+    void shouldKeepOmittedTaxTotalsNull() {
+        NfeEmission emission = service.toDomain("emission-23", transferRequest());
+
+        assertNull(emission.taxTotals());
+    }
+
+    @Test
     void shouldMapPaymentToDomain() {
         NfeEmission emission = service.toDomain("emission-13", requestWithPayment());
 
@@ -874,6 +899,38 @@ class NfeEmissionServiceTest {
                                 new IbsUfTax(new BigDecimal("8.80"), null, null, null, new BigDecimal("0.92")),
                                 new IbsMunicipalityTax(new BigDecimal("0.20"), null, null, null, new BigDecimal("0.02")),
                                 new BigDecimal("0.95"), null, null)));
+    }
+
+    private static NfeEmissionRequest requestWithTaxTotals() {
+        return new NfeEmissionRequest(
+                "REF-014",
+                OperationType.TRANSFER,
+                null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
+                issuer(),
+                recipient(),
+                items(),
+                taxTotals(),
+                null,
+                null,
+                null,
+                null);
+    }
+
+    private static TaxTotals taxTotals() {
+        return new TaxTotals(
+                new IcmsTotals(new BigDecimal("11.00"), new BigDecimal("1.98"), new BigDecimal("0.10"),
+                        new BigDecimal("0.20"), new BigDecimal("0.30"), new BigDecimal("0.40"),
+                        new BigDecimal("0.50"), new BigDecimal("11.00"), new BigDecimal("1.10"),
+                        new BigDecimal("0.22"), new BigDecimal("0.23")),
+                new BigDecimal("0.60"),
+                new BigDecimal("0.70"),
+                new BigDecimal("0.80"),
+                new BigDecimal("0.90"),
+                new BigDecimal("1.00"),
+                new BigDecimal("2.15"),
+                null,
+                null);
     }
 
     private static NfeEmissionRequest xmlOnlyRequest() {

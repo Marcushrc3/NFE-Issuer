@@ -200,7 +200,7 @@ public class NfeEmissionService {
                 toRecipient(request.recipient()),
                 items,
                 totals,
-                null, // taxTotals: not yet exposed by the API
+                request.taxTotals(),
                 toImportDetails(request.importDetails()),
                 toExportDetails(request.exportDetails()),
                 null, // transport: not yet exposed by the API

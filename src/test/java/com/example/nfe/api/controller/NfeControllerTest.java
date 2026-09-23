@@ -519,6 +519,17 @@ class NfeControllerTest {
     }
 
     @Test
+    void shouldAcceptTaxTotals() throws Exception {
+        stubReceivedResponse();
+
+        mockMvc.perform(post("/api/v1/nfe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonRequestWithTaxTotals()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("XML_GENERATED"));
+    }
+
+    @Test
     void shouldRejectAddressWithInvalidMunicipalityCode() throws Exception {
         // Structural validation lives in the domain Address value object:
         // a non-7-digit municipalityCode fails during deserialization and
@@ -537,6 +548,28 @@ class NfeControllerTest {
                 .thenReturn(new NfeEmissionResponse("emission-1",
                         ProcessingMode.XML_ONLY, ProcessingStatus.XML_GENERATED,
                         XML_GENERATED_MESSAGE, "<NFe/>", null));
+    }
+
+    private String jsonRequestWithTaxTotals() {
+        return """
+                {
+                  "externalReference": "REF-001",
+                  "operationType": "TRANSFER",
+                  "processingMode": "XML_ONLY",
+                  "issuer": { "name": "Acme Ltd", "document": "12345678000199" },
+                  "recipient": { "name": "Beta Corp", "document": "98765432000188" },
+                  "items": [ { "productCode": "P-1", "description": "Widget", "ncm": "84818090",
+                    "unit": "UN", "quantity": 1, "unitValue": 10.50, "totalValue": 10.50,
+                    "cfop": "5102", "origin": "0" } ],
+                  "taxTotals": {
+                    "icms": { "base": 11.00, "amount": 1.98, "desonerationAmount": 0.10, "fcp": 0.20,
+                      "fcpUfDestination": 0.30, "ufDestination": 0.40, "ufSender": 0.50,
+                      "stBase": 11.00, "stAmount": 1.10, "fcpStAmount": 0.22, "fcpStRetained": 0.23 },
+                    "importTaxAmount": 0.60, "ipiAmount": 0.70, "ipiDevolvedAmount": 0.80,
+                    "pisAmount": 0.90, "cofinsAmount": 1.00, "totalTaxValue": 2.15
+                  }
+                }
+                """;
     }
 
     private String jsonRequestWithItemTaxation() {
