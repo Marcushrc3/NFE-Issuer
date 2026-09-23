@@ -37,6 +37,7 @@ import com.example.nfe.infrastructure.xml.validation.NfeXmlValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -156,7 +157,8 @@ class NfeEmissionFlowIntegrationTest {
                     invalid.emissionType(), "0", invalid.environment(), invalid.purpose(),
                     invalid.finalConsumer(), invalid.presenceIndicator(), invalid.processType(),
                     invalid.processVersion(), invalid.issuer(), invalid.recipient(), invalid.items(),
-                    invalid.importDetails(), invalid.exportDetails(), invalid.payment(), invalid.processingMode());
+                    invalid.taxTotals(), invalid.importDetails(), invalid.exportDetails(),
+                    invalid.payment(), invalid.transport(), invalid.processingMode());
 
             mockMvc.perform(post("/api/v1/nfe")
                             .contentType("application/json")
@@ -176,7 +178,8 @@ class NfeEmissionFlowIntegrationTest {
                     invalid.emissionType(), invalid.checkDigit(), invalid.environment(), invalid.purpose(),
                     invalid.finalConsumer(), invalid.presenceIndicator(), invalid.processType(),
                     invalid.processVersion(), invalid.issuer(), invalid.recipient(), invalid.items(),
-                    invalid.importDetails(), invalid.exportDetails(), invalid.payment(), invalid.processingMode());
+                    invalid.taxTotals(), invalid.importDetails(), invalid.exportDetails(),
+                    invalid.payment(), invalid.transport(), invalid.processingMode());
 
             mockMvc.perform(post("/api/v1/nfe")
                             .contentType("application/json")
@@ -214,6 +217,14 @@ class NfeEmissionFlowIntegrationTest {
         @Autowired
         private NfeEmissionService service;
 
+        @AfterEach
+        void resetSefazMockResponse() {
+            // The SEFAZ mock response body is shared static state: restore
+            // the default AUTHORIZED response after each test so scenario
+            // isolation never depends on execution order.
+            LocalSefazServer.responseBody.set(SOAP_FAKE_RESPONSE);
+        }
+
         @Test
         void wiredSignerProducesCryptographicallyValidSignature() throws Exception {
             String xml = new NfeXmlGenerator(new com.example.nfe.infrastructure.xml.NfeXmlMapper()).generate(fullEmission());
@@ -224,6 +235,10 @@ class NfeEmissionFlowIntegrationTest {
 
         @Test
         void emitEndToEndRequestSignsValidatesAndTransmitsExactPayload() throws Exception {
+            // Explicit scenario setup: this test requires the default
+            // AUTHORIZED response regardless of execution order.
+            LocalSefazServer.responseBody.set(SOAP_FAKE_RESPONSE);
+
             String response = mockMvc.perform(post("/api/v1/nfe")
                             .contentType("application/json")
                             .content(objectMapper.writeValueAsString(validRequest(ProcessingMode.EMIT))))
@@ -236,11 +251,15 @@ class NfeEmissionFlowIntegrationTest {
                     .getContentAsString();
 
             String signedXml = readJsonString(response, "xml");
-            assertTrue(signedXml.contains("<Signature"));
+            assertTrue(containsSignature(signedXml), "EMIT must return a signed document");
             assertTrue(verifySignature(signedXml, SelfSignedTestCertificate.load()));
             new NfeXmlValidator().validateNFe(signedXml);
             assertNotNull(LocalSefazServer.lastRequest.get());
-            assertEquals(signedXml, extractSignedNfePayload(LocalSefazServer.lastRequest.get()));
+            // The SEFAZ adapter transmits the signed document without the
+            // XML declaration; the SOAP payload must be exactly the signed
+            // XML from the first element onwards.
+            assertEquals(signedXml.substring(signedXml.indexOf("<NFe")),
+                    extractSignedNfePayload(LocalSefazServer.lastRequest.get()));
         }
 
         @Test
@@ -330,16 +349,42 @@ class NfeEmissionFlowIntegrationTest {
                 "1",
                 "0",
                 "1.0",
-                new IssuerDto("Acme Ltd", "12345678000199", "Acme Comercio Ltda", "3"),
-                new RecipientDto("Beta Corp", "98765432000188", RecipientIeStatus.CONTRIBUTOR),
-                List.of(new ItemDto("P-1", "Widget", "84818090", "UN",
-                        new BigDecimal("1"), new BigDecimal("10.50"), new BigDecimal("10.50"),
-                        "5102", "0")),
+                new IssuerDto("Acme Ltd", "12345678000199", "Acme Comercio Ltda", "3",
+                        new Address("Main St", "100", "Sao Paulo", "SP", "01310100", "Centro", "3550308")),
+                new RecipientDto("Beta Corp", "98765432000188", RecipientIeStatus.CONTRIBUTOR,
+                        new Address("Rua B", "200", "Sao Paulo", "SP", "01310200", "Centro", "3550308")),
+                List.of(new ItemDto(
+                        "P-1", "Widget", "84818090",
+                        "7891234567895", "7899876543210",
+                        "UN", new BigDecimal("1"), new BigDecimal("10.50"), new BigDecimal("10.50"),
+                        "UN", new BigDecimal("1"), new BigDecimal("10.50"),
+                        "5102", "0", true,
+                        new ItemTaxation(
+                                new IcmsTax("00", "3",
+                                        new BigDecimal("10.50"), new BigDecimal("18.00"), new BigDecimal("1.89"),
+                                        new BigDecimal("2.00"), new BigDecimal("0.21"),
+                                        null, null, null),
+                                null, null, null, null, null))),
+                taxTotals(),
                 null,
                 null,
                 new PaymentDto(List.of(new PaymentDetailDto("17",
                         new BigDecimal("10.50"), PaymentIndicator.IMMEDIATE, LocalDate.of(2026, 9, 21)))),
+                new Transport("0", "12345678000199", "Acme Carrier",
+                        new Address("Port St", "1", "Santos", "SP", "11013000", "Centro", "3548500")),
                 mode);
+    }
+
+    private static TaxTotals taxTotals() {
+        return new TaxTotals(
+                new IcmsTotals(
+                        new BigDecimal("10.50"), new BigDecimal("1.89"), new BigDecimal("0.00"),
+                        new BigDecimal("0.00"), new BigDecimal("0.00"), new BigDecimal("0.00"),
+                        new BigDecimal("0.00"), new BigDecimal("0.00"), new BigDecimal("0.00"),
+                        new BigDecimal("0.00"), new BigDecimal("0.00")),
+                new BigDecimal("0.00"), new BigDecimal("0.00"), new BigDecimal("0.00"),
+                new BigDecimal("0.00"), new BigDecimal("0.00"), new BigDecimal("2.10"),
+                null, null);
     }
 
     private static NfeEmissionRequest request(ProcessingMode processingMode) {
@@ -354,6 +399,10 @@ class NfeEmissionFlowIntegrationTest {
                         "5102", "0")),
                 null, null, null,
                 processingMode);
+    }
+
+    private static boolean containsSignature(String xml) throws Exception {
+        return parse(xml).getElementsByTagNameNS(DS_NAMESPACE, "Signature").getLength() > 0;
     }
 
     private static String readJsonString(String json, String field) {
