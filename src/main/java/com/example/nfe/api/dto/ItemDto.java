@@ -1,5 +1,8 @@
 package com.example.nfe.api.dto;
 
+import com.example.nfe.domain.ItemTaxation;
+
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -24,6 +27,14 @@ import java.math.BigDecimal;
  * ({@code cEAN}/{@code cEANTrib}: {@code SEM GTIN|8|12-14 digits};
  * {@code uTrib}: 1-6 chars; {@code qTrib}/{@code vUnTrib}: non-negative
  * decimals with 1-4 / 1-10 decimal places; {@code indTot}: 0 or 1).
+ * <p>
+ * {@code taxation} carries the existing item taxation domain graph
+ * ({@link ItemTaxation}: ICMS, IPI, PIS/COFINS, II, IS and IBSCBS/RTC) —
+ * the shared domain type is reused directly, with no duplicated or
+ * parallel API model. It is optional at the API boundary: when omitted or
+ * null, the mapped domain taxation remains null and the XML mapper emits
+ * no {@code imposto} element. Every tax value is pass-through: no
+ * calculation, no derivation and no defaults exist anywhere in the chain.
  */
 public record ItemDto(
         @NotBlank(message = "productCode must not be blank") String productCode,
@@ -43,13 +54,14 @@ public record ItemDto(
         BigDecimal tributaryUnitValue,
         @NotBlank(message = "cfop must not be blank") String cfop,
         @NotBlank(message = "origin must not be blank") String origin,
-        Boolean indTot) {
+        Boolean indTot,
+        @Valid ItemTaxation taxation) {
 
     /**
      * Convenience constructor preserving the pre-tributary-field call
-     * surface: callers that do not supply the tributary fields keep
-     * working unchanged (the values are simply absent, exactly as before
-     * this contract existed).
+     * surface: callers that do not supply the tributary or taxation fields
+     * keep working unchanged (the values are simply absent, exactly as
+     * before these contracts existed).
      */
     public ItemDto(String productCode, String description, String ncm, String unit,
                    BigDecimal quantity, BigDecimal unitValue, BigDecimal totalValue,
@@ -57,6 +69,6 @@ public record ItemDto(
         this(productCode, description, ncm, null, null,
                 unit, quantity, unitValue, totalValue,
                 null, null, null,
-                cfop, origin, null);
+                cfop, origin, null, null);
     }
 }

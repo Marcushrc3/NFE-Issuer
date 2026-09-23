@@ -508,6 +508,17 @@ class NfeControllerTest {
     }
 
     @Test
+    void shouldAcceptItemTaxation() throws Exception {
+        stubReceivedResponse();
+
+        mockMvc.perform(post("/api/v1/nfe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonRequestWithItemTaxation()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("XML_GENERATED"));
+    }
+
+    @Test
     void shouldRejectAddressWithInvalidMunicipalityCode() throws Exception {
         // Structural validation lives in the domain Address value object:
         // a non-7-digit municipalityCode fails during deserialization and
@@ -526,6 +537,33 @@ class NfeControllerTest {
                 .thenReturn(new NfeEmissionResponse("emission-1",
                         ProcessingMode.XML_ONLY, ProcessingStatus.XML_GENERATED,
                         XML_GENERATED_MESSAGE, "<NFe/>", null));
+    }
+
+    private String jsonRequestWithItemTaxation() {
+        return """
+                {
+                  "externalReference": "REF-001",
+                  "operationType": "TRANSFER",
+                  "processingMode": "XML_ONLY",
+                  "issuer": { "name": "Acme Ltd", "document": "12345678000199" },
+                  "recipient": { "name": "Beta Corp", "document": "98765432000188" },
+                  "items": [ { "productCode": "P-1", "description": "Widget", "ncm": "84818090",
+                    "unit": "UN", "quantity": 1, "unitValue": 10.50, "totalValue": 10.50,
+                    "cfop": "5102", "origin": "0",
+                    "taxation": {
+                      "icms": { "cst": "00", "modBc": "3", "taxBase": 10.50, "taxRate": 18.00, "taxAmount": 1.89 },
+                      "ipi": { "cst": "50", "taxBase": 10.50, "taxRate": 5.00, "taxAmount": 0.53 },
+                      "pisCofins": { "pisCst": "01", "pisBase": 10.50, "pisRate": 1.65, "pisAmount": 0.17,
+                        "cofinsCst": "01", "cofinsBase": 10.50, "cofinsRate": 7.60, "cofinsAmount": 0.80 },
+                      "importTax": { "taxBase": 10.50, "taxAmount": 1.05, "customsExpenses": 0.10, "iofAmount": 0.05 },
+                      "is": { "cst": "1", "cClassTrib": "01", "taxBase": 10.50, "rate": 5.00,
+                        "taxableUnit": "UN", "taxableQuantity": 1, "amount": 0.53 },
+                      "rtc": { "cst": "1", "cClassTrib": "01", "indDoacao": "0",
+                        "ibsCbs": { "taxBase": 10.50, "ibsAmount": 0.95,
+                          "ibsUf": { "rate": 8.80, "amount": 0.92 },
+                          "ibsMunicipality": { "rate": 0.20, "amount": 0.02 } } } } } ]
+                }
+                """;
     }
 
     private String jsonRequestWithItemTributaryFields() {

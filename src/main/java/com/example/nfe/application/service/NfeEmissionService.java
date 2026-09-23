@@ -273,7 +273,7 @@ public class NfeEmissionService {
                 item.indTot(),
                 null, // xPed: not yet exposed by the API
                 null, // nItemPed: not yet exposed by the API
-                null, // taxation: not yet exposed by the API
+                item.taxation(),
                 null); // importDetails: not yet exposed by the API
     }
 
