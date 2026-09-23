@@ -254,23 +254,23 @@ public class NfeEmissionService {
                 item.productCode(),
                 item.description(),
                 item.ncm(),
-                null, // cEan: not yet exposed by the API
-                null, // cEanTrib: not yet exposed by the API
+                item.cEan(),
+                item.cEanTrib(),
                 null, // cest: not yet exposed by the API
                 item.unit(),
                 item.quantity(),
                 item.unitValue(),
                 item.totalValue(),
-                null, // tributaryUnit: not yet exposed by the API
-                null, // tributaryQuantity: not yet exposed by the API
-                null, // tributaryUnitValue: not yet exposed by the API
+                item.tributaryUnit(),
+                item.tributaryQuantity(),
+                item.tributaryUnitValue(),
                 null, // freight: not yet exposed by the API
                 null, // insurance: not yet exposed by the API
                 null, // discount: not yet exposed by the API
                 null, // otherCharges: not yet exposed by the API
                 item.cfop(),
                 item.origin(),
-                null, // indTot: not yet exposed by the API
+                item.indTot(),
                 null, // xPed: not yet exposed by the API
                 null, // nItemPed: not yet exposed by the API
                 null, // taxation: not yet exposed by the API

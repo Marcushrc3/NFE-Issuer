@@ -536,6 +536,32 @@ class NfeEmissionServiceTest {
     }
 
     @Test
+    void shouldMapProductTributaryFieldsToDomain() {
+        NfeEmission emission = service.toDomain("emission-18", requestWithProductTributaryFields());
+
+        NfeItem item = emission.items().get(0);
+        assertEquals("7891234567895", item.cEan());
+        assertEquals("7899876543210", item.cEanTrib());
+        assertEquals("UN", item.tributaryUnit());
+        assertEquals(new BigDecimal("1"), item.tributaryQuantity());
+        assertEquals(new BigDecimal("10.50"), item.tributaryUnitValue());
+        assertEquals(Boolean.TRUE, item.indTot());
+    }
+
+    @Test
+    void shouldKeepOmittedProductTributaryFieldsNull() {
+        NfeEmission emission = service.toDomain("emission-19", transferRequest());
+
+        NfeItem item = emission.items().get(0);
+        assertNull(item.cEan());
+        assertNull(item.cEanTrib());
+        assertNull(item.tributaryUnit());
+        assertNull(item.tributaryQuantity());
+        assertNull(item.tributaryUnitValue());
+        assertNull(item.indTot());
+    }
+
+    @Test
     void shouldMapPaymentToDomain() {
         NfeEmission emission = service.toDomain("emission-13", requestWithPayment());
 
@@ -718,6 +744,36 @@ class NfeEmissionServiceTest {
                 new RecipientDto("Beta Corp", "98765432000188", RecipientIeStatus.EXEMPT,
                         new Address("Rua B", "200", "Sao Paulo", "SP", "01310200", "Centro", "3550308")),
                 items(),
+                null,
+                null,
+                null,
+                null);
+    }
+
+    private static NfeEmissionRequest requestWithProductTributaryFields() {
+        return new NfeEmissionRequest(
+                "REF-012",
+                OperationType.TRANSFER,
+                null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
+                issuer(),
+                recipient(),
+                List.of(new ItemDto(
+                        "P-1",
+                        "Widget",
+                        "84818090",
+                        "7891234567895",
+                        "7899876543210",
+                        "UN",
+                        new BigDecimal("1"),
+                        new BigDecimal("10.50"),
+                        new BigDecimal("10.50"),
+                        "UN",
+                        new BigDecimal("1"),
+                        new BigDecimal("10.50"),
+                        "5102",
+                        "0",
+                        true)),
                 null,
                 null,
                 null,
