@@ -1,0 +1,24 @@
+# Build output
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Tooling metadata and local session logs
+.deep-copilot/
+
+# Logs
+*.log
+
+# Credentials: never commit keys, keystores or secrets
+*.p12
+*.pfx
+*.jks
+*.key
+*.pem
+
+# Exception: committed TEST-ONLY fixture (throwaway self-signed certificate,
+# no production value) — intentionally tracked for unit/integration tests.
+!src/test/resources/testcert/nfe-test.p12

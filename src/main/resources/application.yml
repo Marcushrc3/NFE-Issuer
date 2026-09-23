@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: nfe-issuer
+  jackson:
+    deserialization:
+      adjust-dates-to-context-time-zone: false
+
+nfe:
+  sefaz:
+    # Real SEFAZ transmission is opt-in. When enabled, EMIT calls the
+    # SEFAZ-SP NFeAutorizacao4 WebService (synchronous authorization).
+    # No credentials are stored here: the A1 certificate is consumed by
+    # the XML signing step, never by this adapter.
+    enabled: false
+    uf: SP
+    environment: HOMOLOGATION
+    endpoint: https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx
+    connect-timeout: 10s
+    read-timeout: 60s
+  signing:
+    # XML signing is opt-in. Secrets are supplied through environment
+    # variables at runtime — never committed to source control. When
+    # disabled, XML_ONLY works normally and EMIT fails with a controlled
+    # SigningNotConfiguredException.
+    enabled: ${NFE_SIGNING_ENABLED:false}
+    keystore-path: ${NFE_SIGNING_KEYSTORE_PATH:}
+    keystore-password: ${NFE_SIGNING_KEYSTORE_PASSWORD:}
+    alias: ${NFE_SIGNING_ALIAS:}
