@@ -203,7 +203,7 @@ public class NfeEmissionService {
                 request.taxTotals(),
                 toImportDetails(request.importDetails()),
                 toExportDetails(request.exportDetails()),
-                null, // transport: not yet exposed by the API
+                request.transport(),
                 toPayment(request.payment()));
     }
 

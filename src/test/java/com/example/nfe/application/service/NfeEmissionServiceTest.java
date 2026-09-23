@@ -31,6 +31,7 @@ import com.example.nfe.domain.ItemTaxation;
 import com.example.nfe.domain.PisCofinsTax;
 import com.example.nfe.domain.RtcTaxation;
 import com.example.nfe.domain.TaxTotals;
+import com.example.nfe.domain.Transport;
 import com.example.nfe.domain.EmissionStatus;
 import com.example.nfe.domain.NfeEmission;
 import com.example.nfe.domain.NfeItem;
@@ -627,6 +628,29 @@ class NfeEmissionServiceTest {
     }
 
     @Test
+    void shouldMapTransportToDomain() {
+        NfeEmission emission = service.toDomain("emission-24", requestWithTransport());
+
+        Transport transport = emission.transport();
+        assertNotNull(transport);
+        assertEquals("0", transport.freightMode());
+        assertEquals("12345678000199", transport.carrierDocument());
+        assertEquals("Acme Carrier", transport.carrierName());
+        assertNotNull(transport.deliveryAddress());
+        assertEquals("Port St", transport.deliveryAddress().street());
+        assertEquals("Santos", transport.deliveryAddress().city());
+        assertEquals("SP", transport.deliveryAddress().state());
+        assertEquals("3548500", transport.deliveryAddress().municipalityCode());
+    }
+
+    @Test
+    void shouldKeepOmittedTransportNull() {
+        NfeEmission emission = service.toDomain("emission-25", transferRequest());
+
+        assertNull(emission.transport());
+    }
+
+    @Test
     void shouldMapPaymentToDomain() {
         NfeEmission emission = service.toDomain("emission-13", requestWithPayment());
 
@@ -914,6 +938,7 @@ class NfeEmissionServiceTest {
                 null,
                 null,
                 null,
+                null,
                 null);
     }
 
@@ -930,6 +955,24 @@ class NfeEmissionServiceTest {
                 new BigDecimal("1.00"),
                 new BigDecimal("2.15"),
                 null,
+                null);
+    }
+
+    private static NfeEmissionRequest requestWithTransport() {
+        return new NfeEmissionRequest(
+                "REF-015",
+                OperationType.TRANSFER,
+                null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
+                issuer(),
+                recipient(),
+                items(),
+                null,
+                null,
+                null,
+                null,
+                new Transport("0", "12345678000199", "Acme Carrier",
+                        new Address("Port St", "1", "Santos", "SP", "11013000", "Centro", "3548500")),
                 null);
     }
 

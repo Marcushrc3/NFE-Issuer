@@ -530,6 +530,17 @@ class NfeControllerTest {
     }
 
     @Test
+    void shouldAcceptTransport() throws Exception {
+        stubReceivedResponse();
+
+        mockMvc.perform(post("/api/v1/nfe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonRequestWithTransport()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("XML_GENERATED"));
+    }
+
+    @Test
     void shouldRejectAddressWithInvalidMunicipalityCode() throws Exception {
         // Structural validation lives in the domain Address value object:
         // a non-7-digit municipalityCode fails during deserialization and
@@ -548,6 +559,29 @@ class NfeControllerTest {
                 .thenReturn(new NfeEmissionResponse("emission-1",
                         ProcessingMode.XML_ONLY, ProcessingStatus.XML_GENERATED,
                         XML_GENERATED_MESSAGE, "<NFe/>", null));
+    }
+
+    private String jsonRequestWithTransport() {
+        return """
+                {
+                  "externalReference": "REF-001",
+                  "operationType": "TRANSFER",
+                  "processingMode": "XML_ONLY",
+                  "issuer": { "name": "Acme Ltd", "document": "12345678000199" },
+                  "recipient": { "name": "Beta Corp", "document": "98765432000188" },
+                  "items": [ { "productCode": "P-1", "description": "Widget", "ncm": "84818090",
+                    "unit": "UN", "quantity": 1, "unitValue": 10.50, "totalValue": 10.50,
+                    "cfop": "5102", "origin": "0" } ],
+                  "transport": {
+                    "freightMode": "0",
+                    "carrierDocument": "12345678000199",
+                    "carrierName": "Acme Carrier",
+                    "deliveryAddress": { "street": "Port St", "number": "1", "city": "Santos",
+                      "state": "SP", "zipCode": "11013000", "neighborhood": "Centro",
+                      "municipalityCode": "3548500" }
+                  }
+                }
+                """;
     }
 
     private String jsonRequestWithTaxTotals() {

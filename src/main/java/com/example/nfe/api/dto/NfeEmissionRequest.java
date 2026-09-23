@@ -3,6 +3,7 @@ package com.example.nfe.api.dto;
 import com.example.nfe.application.service.ProcessingMode;
 import com.example.nfe.domain.OperationType;
 import com.example.nfe.domain.TaxTotals;
+import com.example.nfe.domain.Transport;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -23,6 +24,14 @@ import java.util.List;
  * values. Every value is pass-through: the application performs no
  * calculation, derivation or defaulting of tax totals; the bundled PL_010f
  * XSD remains the authoritative structural/lexical boundary.
+ * <p>
+ * {@code transport} carries the existing domain {@link Transport} graph
+ * (freight mode, carrier document/name and delivery address), reused
+ * directly with no duplicated model. It is optional at the API boundary:
+ * when omitted or null, the mapped domain transport remains null and no
+ * {@code transp} group is generated. No default freight mode is invented —
+ * the client supplies it explicitly when a valid NF-e requires it, and the
+ * XSD validates the official {@code modFrete} enumeration (0..4, 9).
  */
 public record NfeEmissionRequest(
         @NotBlank(message = "externalReference must not be blank") String externalReference,
@@ -53,6 +62,7 @@ public record NfeEmissionRequest(
         @Valid ImportDetailsDto importDetails,
         @Valid ExportDetailsDto exportDetails,
         @Valid PaymentDto payment,
+        @Valid Transport transport,
         @NotNull(message = "processingMode must not be null") ProcessingMode processingMode) {
 
     /**
@@ -76,6 +86,6 @@ public record NfeEmissionRequest(
                 operationDirection, destinationType, printFormat, emissionType, checkDigit,
                 environment, purpose, finalConsumer, presenceIndicator, processType,
                 processVersion, issuer, recipient, items, null, importDetails, exportDetails,
-                payment, processingMode);
+                payment, null, processingMode);
     }
 }
