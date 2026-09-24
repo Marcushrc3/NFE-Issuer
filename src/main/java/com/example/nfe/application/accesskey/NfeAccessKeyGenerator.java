@@ -11,8 +11,8 @@ import java.time.format.DateTimeFormatter;
  * <p>
  * Composition: cUF(2) + AAMM(4) + CNPJ(14) + mod(2) + serie(3) + nNF(9) +
  * tpEmis(1) + cNF(8) + cDV(1). The check digit uses the official modulo-11
- * algorithm with weights 2..9 cycling from right to left (dv = 11 - sum%11;
- * dv &gt;= 10 becomes 0).
+ * algorithm with weights 2..9 cycling from right to left (dv = 0 when the
+ * remainder is below 2, otherwise dv = 11 - remainder).
  * <p>
  * Nothing is invented: when any required component is missing, the
  * generator returns {@code null} and the caller decides how to proceed.
@@ -70,11 +70,8 @@ public final class NfeAccessKeyGenerator {
             sum += Character.digit(first43.charAt(i), 10) * weight;
             weight = weight == 9 ? 2 : weight + 1;
         }
-        int normalized = (sum + 1) % 11;
-        int dv = 11 - normalized;
-        if (dv >= 10) {
-            dv = 0;
-        }
+        int remainder = sum % 11;
+        int dv = remainder < 2 ? 0 : 11 - remainder;
         return String.valueOf(dv);
     }
 }

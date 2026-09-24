@@ -76,7 +76,7 @@ class NfeEmissionServiceTest {
             100,
             "Autorizado o uso da NF-e",
             "135260000000123",
-            "35260912345678000199550030000010001000000018",
+            "35260912345678000199550030000010001000000019",
             "dGVzdA==");
 
     private static final SefazTransmissionResult AUTHORIZED_RESULT = new SefazTransmissionResult(
@@ -235,7 +235,7 @@ class NfeEmissionServiceTest {
         assertEquals(100, authorization.code());
         assertEquals("Autorizado o uso da NF-e", authorization.message());
         assertEquals("135260000000123", authorization.protocol());
-        assertEquals("35260912345678000199550030000010001000000018", authorization.accessKey());
+        assertEquals("35260912345678000199550030000010001000000019", authorization.accessKey());
         assertEquals("dGVzdA==", authorization.digestValue());
     }
 

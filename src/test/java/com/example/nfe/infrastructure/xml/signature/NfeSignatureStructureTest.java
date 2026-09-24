@@ -31,7 +31,7 @@ class NfeSignatureStructureTest {
         Nfe nfe = new Nfe();
         InfNfe infNfe = new InfNfe();
         infNfe.setVersao("4.00");
-        infNfe.setId("NFe35260912345678000199550030000010001000000018");
+        infNfe.setId("NFe35260912345678000199550030000010001000000019");
         nfe.setInfNfe(infNfe);
         nfe.setSignature(structuralSignature());
 
@@ -63,7 +63,7 @@ class NfeSignatureStructureTest {
                 xpath.evaluate("local-name(/*/*[2]/*[1]/*[2])", document, XPathConstants.STRING));
         assertEquals("Reference",
                 xpath.evaluate("local-name(/*/*[2]/*[1]/*[3])", document, XPathConstants.STRING));
-        assertEquals("#NFe35260912345678000199550030000010001000000018",
+        assertEquals("#NFe35260912345678000199550030000010001000000019",
                 xpath.evaluate("/*/*[2]/*[1]/*[3]/@URI", document, XPathConstants.STRING));
         assertEquals("Transforms",
                 xpath.evaluate("local-name(/*/*[2]/*[1]/*[3]/*[1])", document, XPathConstants.STRING));
@@ -113,7 +113,7 @@ class NfeSignatureStructureTest {
         digestMethod.setAlgorithm("http://www.w3.org/2000/09/xmldsig#sha1");
 
         Reference reference = new Reference();
-        reference.setUri("#NFe35260912345678000199550030000010001000000018");
+        reference.setUri("#NFe35260912345678000199550030000010001000000019");
         reference.setTransforms(transforms);
         reference.setDigestMethod(digestMethod);
         reference.setDigestValue(new byte[]{1, 2, 3}); // structural placeholder — NOT a real digest

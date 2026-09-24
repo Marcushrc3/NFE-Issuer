@@ -31,7 +31,7 @@ class NfeSefazTransmitterTest {
 
     private static final String SIGNED_NFE =
             "<NFe xmlns=\"http://www.portalfiscal.inf.br/nfe\">"
-                    + "<infNFe Id=\"NFe35260912345678000199550030000010001000000018\" versao=\"4.00\">"
+                    + "<infNFe Id=\"NFe35260912345678000199550030000010001000000019\" versao=\"4.00\">"
                     + "<ide><cUF>35</cUF></ide></infNFe>"
                     + "<Signature xmlns=\"http://www.w3.org/2000/09/xmldsig#\">"
                     + "<SignatureValue>dGVzdHNpZ25hdHVyZQ==</SignatureValue></Signature>"
@@ -51,7 +51,7 @@ class NfeSefazTransmitterTest {
                     + "<cStat>103</cStat><xMotivo>Lote recebido com sucesso</xMotivo><cUF>35</cUF>"
                     + "<protNFe versao=\"4.00\"><infProt Id=\"ID135260000000123\">"
                     + "<tpAmb>2</tpAmb><verAplic>SP_NFE_PL010f</verAplic>"
-                    + "<chNFe>35260912345678000199550030000010001000000018</chNFe>"
+                    + "<chNFe>35260912345678000199550030000010001000000019</chNFe>"
                     + "<dhRecbto>2026-09-22T12:00:00-03:00</dhRecbto>"
                     + "<nProt>135260000000123</nProt><digVal>dGVzdA==</digVal>"
                     + "<cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo>"
@@ -64,7 +64,7 @@ class NfeSefazTransmitterTest {
                     + "<cStat>103</cStat><xMotivo>Lote recebido com sucesso</xMotivo><cUF>35</cUF>"
                     + "<protNFe versao=\"4.00\"><infProt Id=\"ID135260000000124\">"
                     + "<tpAmb>2</tpAmb><verAplic>SP_NFE_PL010f</verAplic>"
-                    + "<chNFe>35260912345678000199550030000010001000000018</chNFe>"
+                    + "<chNFe>35260912345678000199550030000010001000000019</chNFe>"
                     + "<dhRecbto>2026-09-22T12:01:00-03:00</dhRecbto>"
                     + "<nProt>135260000000124</nProt><digVal>dGVzdA==</digVal>"
                     + "<cStat>110</cStat><xMotivo>Uso Denegado</xMotivo>"
@@ -97,7 +97,7 @@ class NfeSefazTransmitterTest {
                     + "<cStat>104</cStat><xMotivo>Lote processado</xMotivo><cUF>35</cUF>"
                     + "<protNFe versao=\"4.00\"><infProt Id=\"ID135260000000125\">"
                     + "<tpAmb>2</tpAmb><verAplic>SP_NFE_PL010f</verAplic>"
-                    + "<chNFe>35260912345678000199550030000010001000000018</chNFe>"
+                    + "<chNFe>35260912345678000199550030000010001000000019</chNFe>"
                     + "<dhRecbto>2026-09-22T12:02:00-03:00</dhRecbto>"
                     + "<nProt>135260000000125</nProt><digVal>dGVzdA==</digVal>"
                     + "<cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo>"
@@ -180,7 +180,7 @@ class NfeSefazTransmitterTest {
             assertEquals(100, authorization.code());
             assertEquals("Autorizado o uso da NF-e", authorization.message());
             assertEquals("135260000000123", authorization.protocol());
-            assertEquals("35260912345678000199550030000010001000000018", authorization.accessKey());
+            assertEquals("35260912345678000199550030000010001000000019", authorization.accessKey());
             assertEquals("dGVzdA==", authorization.digestValue());
         }
     }

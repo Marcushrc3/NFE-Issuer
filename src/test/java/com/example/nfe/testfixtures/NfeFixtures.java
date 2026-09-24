@@ -41,7 +41,7 @@ public final class NfeFixtures {
         return emission(
                 "55", 3, 1000L, OffsetDateTime.parse("2026-09-21T10:30:00-03:00"),
                 "Remessa para industrializacao", "3550308",
-                "35", "00000001", "1", "1", "1", "1", "8", "2", "1", "1", "1", "0", "1.0");
+                "35", "00000001", "1", "1", "1", "1", "9", "2", "1", "1", "1", "0", "1.0");
     }
 
     /**

@@ -57,7 +57,7 @@ class XmlDsigSignerTest {
 
     private static final String NF_NAMESPACE = "http://www.portalfiscal.inf.br/nfe";
     private static final String DS_NAMESPACE = "http://www.w3.org/2000/09/xmldsig#";
-    private static final String EXPECTED_ID = "NFe35260912345678000199550030000010001000000018";
+    private static final String EXPECTED_ID = "NFe35260912345678000199550030000010001000000019";
 
     private static SigningCredentials testCredentials;
     private static String unsignedXml;
@@ -193,7 +193,7 @@ class XmlDsigSignerTest {
                 "emission-1", "REF-1", OperationType.TRANSFER, EmissionStatus.RECEIVED,
                 "55", 3, 1000L, OffsetDateTime.parse("2026-09-21T10:30:00-03:00"),
                 "Remessa para industrializacao", "3550308",
-                "35", "00000001", "1", "1", "1", "1", "8", "2", "1", "1", "1", "0", "1.0",
+                "35", "00000001", "1", "1", "1", "1", "9", "2", "1", "1", "1", "0", "1.0",
                 issuer, recipient, List.of(item),
                 totals, taxTotals, null, null, transport, payment);
     }

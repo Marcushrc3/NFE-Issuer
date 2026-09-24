@@ -85,7 +85,7 @@ class NfeXmlGeneratorTest {
         String xml = generator.generate(emissionWithFullIde());
         Document document = parse(xml);
 
-        assertEquals("NFe35260912345678000199550030000010001000000018",
+        assertEquals("NFe35260912345678000199550030000010001000000019",
                 xpath(document, "/NFe/infNFe/@Id"));
     }
 
@@ -207,7 +207,7 @@ class NfeXmlGeneratorTest {
         assertEquals("1", xpath(document, "/NFe/infNFe/ide/idDest"));
         assertEquals("1", xpath(document, "/NFe/infNFe/ide/tpImp"));
         assertEquals("1", xpath(document, "/NFe/infNFe/ide/tpEmis"));
-        assertEquals("8", xpath(document, "/NFe/infNFe/ide/cDV"));
+        assertEquals("9", xpath(document, "/NFe/infNFe/ide/cDV"));
         assertEquals("2", xpath(document, "/NFe/infNFe/ide/tpAmb"));
         assertEquals("1", xpath(document, "/NFe/infNFe/ide/finNFe"));
         assertEquals("1", xpath(document, "/NFe/infNFe/ide/indFinal"));
@@ -224,8 +224,8 @@ class NfeXmlGeneratorTest {
         String accessKey = xpath(document, "/NFe/infNFe/@Id").replace("NFe", "");
         String ideCdv = xpath(document, "/NFe/infNFe/ide/cDV");
 
-        assertEquals("8", ideCdv);
-        assertEquals("8", String.valueOf(accessKey.charAt(accessKey.length() - 1)));
+        assertEquals("9", ideCdv);
+        assertEquals("9", String.valueOf(accessKey.charAt(accessKey.length() - 1)));
     }
 
     @Test
@@ -2060,7 +2060,7 @@ class NfeXmlGeneratorTest {
                 OffsetDateTime.parse("2026-09-21T10:30:00-03:00"),
                 "Remessa para industrialização",
                 "3550308",
-                "35", "00000001", "1", "1", "1", "1", "8", "2", "1", "1", "1", "0", "1.0",
+                "35", "00000001", "1", "1", "1", "1", "9", "2", "1", "1", "1", "0", "1.0",
                 issuer(),
                 recipient(),
                 List.of(item()),

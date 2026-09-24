@@ -69,7 +69,7 @@ class NfeEmissionServiceRealPipelineTest {
                     100,
                     "Autorizado o uso da NF-e",
                     "135260000000123",
-                    "35260912345678000199550030000010001000000018",
+                    "35260912345678000199550030000010001000000019",
                     "dGVzdA=="),
             "<raw/>");
 

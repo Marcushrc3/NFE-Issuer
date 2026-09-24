@@ -22,9 +22,9 @@ class NfeAccessKeyGeneratorTest {
 
     @Test
     void shouldGenerateDeterministicAccessKey() {
-        NfeEmission emission = emission("35", "00000001", "1", 3, 1000L, "8");
+        NfeEmission emission = emission("35", "00000001", "1", 3, 1000L, "9");
 
-        assertEquals("35260912345678000199550030000010001000000018",
+        assertEquals("35260912345678000199550030000010001000000019",
                 NfeAccessKeyGenerator.generate(emission));
     }
 
@@ -40,14 +40,51 @@ class NfeAccessKeyGeneratorTest {
     }
 
     @Test
-    void shouldComputeOfficialCheckDigit() {
-        assertEquals("8", NfeAccessKeyGenerator.checkDigit(FULL_43_DIGITS));
+    void shouldRejectLegacyIncorrectCheckDigit() {
+        // "8" was produced by the old incorrect formula; with the official
+        // rule the digit for this key is 9, so the legacy value must now be
+        // rejected instead of being silently accepted.
+        NfeEmission emission = emission("35", "00000001", "1", 3, 1000L, "8");
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> NfeAccessKeyGenerator.generate(emission));
     }
 
     @Test
-    void shouldZeroCheckDigitWhenRemainderWouldExceedNine() {
-        // Crafted so the modulo-11 remainder is 0 -> dv = 11 -> 0.
-        assertEquals("0", NfeAccessKeyGenerator.checkDigit("0000000000000000000000000000000000000000000"));
+    void shouldComputeOfficialCheckDigitForAuditVectorOne() {
+        // Independent vector from the Increment 58 audit: weighted sum 563,
+        // remainder 2, official DV 9.
+        assertEquals("9", NfeAccessKeyGenerator.checkDigit(FULL_43_DIGITS));
+    }
+
+    @Test
+    void shouldComputeOfficialCheckDigitForIndependentNfephpVector() {
+        // Independent canonical vector from the NFePHP reference
+        // implementation: full key 35170458716523000119550010000000121000123458.
+        assertEquals("8",
+                NfeAccessKeyGenerator.checkDigit("3517045871652300011955001000000012100012345"));
+    }
+
+    @Test
+    void shouldZeroCheckDigitWhenRemainderIsZero() {
+        // Sum of digits is 0, so sum % 11 == 0 -> official DV 0.
+        assertEquals("0",
+                NfeAccessKeyGenerator.checkDigit("0000000000000000000000000000000000000000000"));
+    }
+
+    @Test
+    void shouldZeroCheckDigitWhenRemainderIsOne() {
+        // Last digit 6 with weight 2 gives sum 12; 12 % 11 == 1 -> official DV 0.
+        assertEquals("0",
+                NfeAccessKeyGenerator.checkDigit("0000000000000000000000000000000000000000006"));
+    }
+
+    @Test
+    void shouldZeroCheckDigitForOfficialVectorWithRemainderOne() {
+        // Real NFePHP test vector: remainder 1 -> official DV 0.
+        assertEquals("0",
+                NfeAccessKeyGenerator.checkDigit("3517035871652300011955001000000030100000030"));
     }
 
     @Test

@@ -231,7 +231,7 @@ class NfeControllerTest {
                                         100,
                                         "Autorizado o uso da NF-e",
                                         "135260000000123",
-                                        "35260912345678000199550030000010001000000018",
+                                        "35260912345678000199550030000010001000000019",
                                         "dGVzdA=="))));
 
         mockMvc.perform(post("/api/v1/nfe")
@@ -248,7 +248,7 @@ class NfeControllerTest {
                 .andExpect(jsonPath("$.transmission.authorization.message").value("Autorizado o uso da NF-e"))
                 .andExpect(jsonPath("$.transmission.authorization.protocol").value("135260000000123"))
                 .andExpect(jsonPath("$.transmission.authorization.accessKey")
-                        .value("35260912345678000199550030000010001000000018"))
+                        .value("35260912345678000199550030000010001000000019"))
                 .andExpect(jsonPath("$.transmission.authorization.digestValue").value("dGVzdA=="))
                 .andExpect(jsonPath("$.transmission.rawResponse").doesNotExist());
     }
@@ -729,7 +729,7 @@ class NfeControllerTest {
                   "destinationType": "1",
                   "printFormat": "1",
                   "emissionType": "1",
-                  "checkDigit": "8",
+                  "checkDigit": "9",
                   "environment": "2",
                   "purpose": "1",
                   "finalConsumer": "1",

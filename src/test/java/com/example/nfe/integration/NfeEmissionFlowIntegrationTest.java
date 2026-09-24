@@ -91,7 +91,7 @@ class NfeEmissionFlowIntegrationTest {
                     + "<cStat>103</cStat><xMotivo>Lote recebido com sucesso</xMotivo><cUF>35</cUF>"
                     + "<protNFe versao=\"4.00\"><infProt Id=\"ID135260000000123\">"
                     + "<tpAmb>2</tpAmb><verAplic>SP_NFE_PL010f</verAplic>"
-                    + "<chNFe>35260912345678000199550030000010001000000018</chNFe>"
+                    + "<chNFe>35260912345678000199550030000010001000000019</chNFe>"
                     + "<dhRecbto>2026-09-22T12:00:00-03:00</dhRecbto>"
                     + "<nProt>135260000000123</nProt><digVal>dGVzdA==</digVal>"
                     + "<cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo>"
@@ -136,13 +136,13 @@ class NfeEmissionFlowIntegrationTest {
             String xml = readJsonString(response, "xml");
             assertFalse(xml.contains("Signature"), "XML_ONLY must not include ds:Signature");
             assertTrue(xml.contains("<infNFe"));
-            assertTrue(xml.contains("Id=\"NFe35260912345678000199550030000010001000000018\""));
-            assertTrue(xml.contains("<cDV>8</cDV>"));
-            assertEquals("8", getCheckDigit(xml));
-            assertEquals("NFe35260912345678000199550030000010001000000018", getInfNfeId(xml));
-            assertEquals("35260912345678000199550030000010001000000018",
+            assertTrue(xml.contains("Id=\"NFe35260912345678000199550030000010001000000019\""));
+            assertTrue(xml.contains("<cDV>9</cDV>"));
+            assertEquals("9", getCheckDigit(xml));
+            assertEquals("NFe35260912345678000199550030000010001000000019", getInfNfeId(xml));
+            assertEquals("35260912345678000199550030000010001000000019",
                     getAccessKeyFromId(getInfNfeId(xml)));
-            assertEquals("8", NfeAccessKeyGenerator.checkDigit(getAccessKeyFromId(getInfNfeId(xml)).substring(0, 43)));
+            assertEquals("9", NfeAccessKeyGenerator.checkDigit(getAccessKeyFromId(getInfNfeId(xml)).substring(0, 43)));
             new NfeXmlValidator().validateInfNFe(xml);
         }
 
@@ -270,7 +270,7 @@ class NfeEmissionFlowIntegrationTest {
                             + "<cStat>103</cStat><xMotivo>Lote recebido com sucesso</xMotivo><cUF>35</cUF>"
                             + "<protNFe versao=\"4.00\"><infProt Id=\"ID135260000000124\">"
                             + "<tpAmb>2</tpAmb><verAplic>SP_NFE_PL010f</verAplic>"
-                            + "<chNFe>35260912345678000199550030000010001000000018</chNFe>"
+                            + "<chNFe>35260912345678000199550030000010001000000019</chNFe>"
                             + "<dhRecbto>2026-09-22T12:00:00-03:00</dhRecbto>"
                             + "<nProt>135260000000124</nProt><digVal>dGVzdA==</digVal>"
                             + "<cStat>110</cStat><xMotivo>Uso Denegado</xMotivo>"
@@ -342,7 +342,7 @@ class NfeEmissionFlowIntegrationTest {
                 "1",
                 "1",
                 "1",
-                "8",
+                "9",
                 "2",
                 "1",
                 "1",
@@ -553,7 +553,7 @@ class NfeEmissionFlowIntegrationTest {
                 "emission-1", "REF-1", OperationType.TRANSFER, EmissionStatus.RECEIVED,
                 "55", 3, 1000L, OffsetDateTime.parse("2026-09-21T10:30:00-03:00"),
                 "Remessa para industrializacao", "3550308",
-                "35", "00000001", "1", "1", "1", "1", "8", "2", "1", "1", "1", "0", "1.0",
+                "35", "00000001", "1", "1", "1", "1", "9", "2", "1", "1", "1", "0", "1.0",
                 issuer, recipient, List.of(item),
                 totals, taxTotals, null, null, transport, payment);
     }
