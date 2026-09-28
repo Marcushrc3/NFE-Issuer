@@ -9,6 +9,8 @@ import com.example.nfe.application.service.NfeEmissionService;
 import com.example.nfe.application.service.ProcessingMode;
 import com.example.nfe.application.service.ProcessingStatus;
 import com.example.nfe.application.service.SigningNotConfiguredException;
+import com.example.nfe.domain.UnsupportedTaxationException;
+import com.example.nfe.infrastructure.xml.validation.NfeXmlValidationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -483,6 +485,39 @@ class NfeControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.status").value(500))
                 .andExpect(jsonPath("$.message").value("Internal server error"));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenGeneratedXmlFailsXsdValidation() throws Exception {
+        when(nfeEmissionService.issue(any()))
+                .thenThrow(new NfeXmlValidationException(
+                        "cvc-complex-type.2.4.b: The content of element 'emit' is not complete"));
+
+        mockMvc.perform(post("/api/v1/nfe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonRequest("IMPORT", IMPORT_SECTION)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value(
+                        "NF-e XML validation failed: cvc-complex-type.2.4.b: "
+                                + "The content of element 'emit' is not complete"));
+    }
+
+    @Test
+    void shouldReturnBadRequestForUnsupportedIcmsTaxation() throws Exception {
+        when(nfeEmissionService.issue(any()))
+                .thenThrow(new UnsupportedTaxationException(
+                        "ICMS CST '90' is not supported by this version of the NF-e engine; "
+                                + "the request cannot be processed"));
+
+        mockMvc.perform(post("/api/v1/nfe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonRequest("IMPORT", IMPORT_SECTION)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value(
+                        "ICMS CST '90' is not supported by this version of the NF-e engine; "
+                                + "the request cannot be processed"));
     }
 
     @Test

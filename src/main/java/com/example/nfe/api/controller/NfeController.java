@@ -53,12 +53,13 @@ public class NfeController {
                     description = "Request accepted and processed: status XML_GENERATED (XML_ONLY) "
                             + "or AUTHORIZED / REJECTED / PROCESSING (EMIT)."),
             @ApiResponse(responseCode = "400",
-                    description = "Request rejected: bean validation, domain invariants or "
-                            + "access-key check-digit (cDV) mismatch.",
+                    description = "Request rejected: bean validation, domain invariants, "
+                            + "access-key check-digit (cDV) mismatch, unsupported ICMS taxation, "
+                            + "or generated-XML XSD validation failure.",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500",
                     description = "Configuration error (signing or SEFAZ unavailable), SEFAZ "
-                            + "transmission failure, or generated-XML XSD validation failure.",
+                            + "transmission failure, or unexpected internal error.",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping

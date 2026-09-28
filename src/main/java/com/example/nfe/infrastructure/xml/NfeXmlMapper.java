@@ -28,6 +28,7 @@ import com.example.nfe.domain.RtcTaxation;
 import com.example.nfe.domain.TaxTotals;
 import com.example.nfe.domain.Totals;
 import com.example.nfe.domain.Transport;
+import com.example.nfe.domain.UnsupportedTaxationException;
 import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
@@ -543,8 +544,9 @@ public class NfeXmlMapper {
             case "00" -> xml.setIcms00(toIcms00(icms, origin));
             case "30" -> xml.setIcms30(toIcms30(icms, origin));
             case "40", "41", "50" -> xml.setIcms40(toIcms40(icms, origin));
-            default -> throw new IllegalStateException(
-                    "ICMS CST not supported for XML variant mapping: " + icms.cst());
+            default -> throw new UnsupportedTaxationException(
+                    "ICMS CST '" + icms.cst() + "' is not supported by this version of the "
+                            + "NF-e engine; the request cannot be processed");
         }
         return xml;
     }
@@ -556,10 +558,12 @@ public class NfeXmlMapper {
      */
     private Icms00 toIcms00(IcmsTax icms, String origin) {
         if (icms.st() != null) {
-            throw new IllegalStateException("ICMS00 does not support ICMS ST data");
+            throw new UnsupportedTaxationException("ICMS CST '00' combined with ICMS ST data is not "
+                    + "supported by this version of the NF-e engine; the request cannot be processed");
         }
         if (icms.desonerationAmount() != null || icms.desonerationReason() != null) {
-            throw new IllegalStateException("ICMS00 does not support desoneração data");
+            throw new UnsupportedTaxationException("ICMS CST '00' combined with desoneração data is not "
+                    + "supported by this version of the NF-e engine; the request cannot be processed");
         }
         Icms00 xml = new Icms00();
         xml.setOrigin(origin);
@@ -581,11 +585,12 @@ public class NfeXmlMapper {
     private Icms30 toIcms30(IcmsTax icms, String origin) {
         IcmsStTax st = icms.st();
         if (st == null) {
-            throw new IllegalStateException("ICMS30 requires ICMS ST data (IcmsTax.st)");
+            throw new UnsupportedTaxationException("ICMS CST '30' requires ICMS ST data "
+                    + "(IcmsTax.st); the request cannot be processed");
         }
         if (icms.desonerationAmount() == null || icms.desonerationReason() == null) {
-            throw new IllegalStateException(
-                    "ICMS30 requires desoneração data (vICMSDeson/motDesICMS)");
+            throw new UnsupportedTaxationException("ICMS CST '30' requires desoneração data "
+                    + "(vICMSDeson/motDesICMS); the request cannot be processed");
         }
         Icms30 xml = new Icms30();
         xml.setOrigin(origin);
@@ -611,8 +616,9 @@ public class NfeXmlMapper {
      */
     private Icms40 toIcms40(IcmsTax icms, String origin) {
         if (icms.desonerationAmount() == null || icms.desonerationReason() == null) {
-            throw new IllegalStateException(
-                    "ICMS40 requires desoneração data (vICMSDeson/motDesICMS)");
+            throw new UnsupportedTaxationException("ICMS CST '" + icms.cst()
+                    + "' requires desoneração data (vICMSDeson/motDesICMS); "
+                    + "the request cannot be processed");
         }
         Icms40 xml = new Icms40();
         xml.setOrigin(origin);

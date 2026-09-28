@@ -67,6 +67,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -168,7 +169,7 @@ class NfeEmissionFlowIntegrationTest {
         }
 
         @Test
-        void invalidUnsignedXmlFailsBeforeSigning() throws Exception {
+        void invalidClientPayloadThatFailsXsdReturnsBadRequest() throws Exception {
             NfeEmissionRequest invalid = validRequest(ProcessingMode.XML_ONLY);
             invalid = new NfeEmissionRequest(
                     invalid.externalReference(), invalid.operationType(), invalid.model(), invalid.series(),
@@ -184,8 +185,28 @@ class NfeEmissionFlowIntegrationTest {
             mockMvc.perform(post("/api/v1/nfe")
                             .contentType("application/json")
                             .content(objectMapper.writeValueAsString(invalid)))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(jsonPath("$.status").value(500));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.message").value(containsString("NF-e XML validation failed")));
+        }
+
+        @Test
+        void unsupportedIcmsCstIsRejectedAsBadRequest() throws Exception {
+            NfeEmissionRequest unsupported = validRequest(ProcessingMode.XML_ONLY,
+                    new ItemTaxation(
+                            new IcmsTax("10", "3",
+                                    new BigDecimal("10.50"), new BigDecimal("18.00"), new BigDecimal("1.89"),
+                                    new BigDecimal("2.00"), new BigDecimal("0.21"),
+                                    null, null, null),
+                            null, null, null, null, null));
+
+            mockMvc.perform(post("/api/v1/nfe")
+                            .contentType("application/json")
+                            .content(objectMapper.writeValueAsString(unsupported)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.message").value(containsString(
+                            "ICMS CST '10' is not supported by this version of the NF-e engine")));
         }
 
         @Test
@@ -327,6 +348,15 @@ class NfeEmissionFlowIntegrationTest {
     }
 
     private static NfeEmissionRequest validRequest(ProcessingMode mode) {
+        return validRequest(mode, new ItemTaxation(
+                new IcmsTax("00", "3",
+                        new BigDecimal("10.50"), new BigDecimal("18.00"), new BigDecimal("1.89"),
+                        new BigDecimal("2.00"), new BigDecimal("0.21"),
+                        null, null, null),
+                null, null, null, null, null));
+    }
+
+    private static NfeEmissionRequest validRequest(ProcessingMode mode, ItemTaxation taxation) {
         return new NfeEmissionRequest(
                 "REF-1",
                 OperationType.TRANSFER,
@@ -353,18 +383,7 @@ class NfeEmissionFlowIntegrationTest {
                         new Address("Main St", "100", "Sao Paulo", "SP", "01310100", "Centro", "3550308")),
                 new RecipientDto("Beta Corp", "98765432000188", RecipientIeStatus.CONTRIBUTOR,
                         new Address("Rua B", "200", "Sao Paulo", "SP", "01310200", "Centro", "3550308")),
-                List.of(new ItemDto(
-                        "P-1", "Widget", "84818090",
-                        "7891234567895", "7899876543210",
-                        "UN", new BigDecimal("1"), new BigDecimal("10.50"), new BigDecimal("10.50"),
-                        "UN", new BigDecimal("1"), new BigDecimal("10.50"),
-                        "5102", "0", true,
-                        new ItemTaxation(
-                                new IcmsTax("00", "3",
-                                        new BigDecimal("10.50"), new BigDecimal("18.00"), new BigDecimal("1.89"),
-                                        new BigDecimal("2.00"), new BigDecimal("0.21"),
-                                        null, null, null),
-                                null, null, null, null, null))),
+                List.of(item(taxation)),
                 taxTotals(),
                 null,
                 null,
@@ -373,6 +392,16 @@ class NfeEmissionFlowIntegrationTest {
                 new Transport("0", "12345678000199", "Acme Carrier",
                         new Address("Port St", "1", "Santos", "SP", "11013000", "Centro", "3548500")),
                 mode);
+    }
+
+    private static ItemDto item(ItemTaxation taxation) {
+        return new ItemDto(
+                "P-1", "Widget", "84818090",
+                "7891234567895", "7899876543210",
+                "UN", new BigDecimal("1"), new BigDecimal("10.50"), new BigDecimal("10.50"),
+                "UN", new BigDecimal("1"), new BigDecimal("10.50"),
+                "5102", "0", true,
+                taxation);
     }
 
     private static TaxTotals taxTotals() {

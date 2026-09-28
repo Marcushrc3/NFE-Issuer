@@ -118,8 +118,8 @@ Response statuses (always with a JSON body):
 | HTTP | Meaning |
 |---|---|
 | `202` | Processed — see `status` field (`XML_GENERATED`, `AUTHORIZED`, `REJECTED`, `PROCESSING`) |
-| `400` | Invalid request: bean validation, domain invariants, or access-key `cDV` mismatch |
-| `500` | Signing/SEFAZ configuration error, SEFAZ transmission failure, or generated-XML XSD validation failure |
+| `400` | Invalid request: bean validation, domain invariants, access-key `cDV` mismatch, unsupported ICMS taxation, or generated-XML XSD validation failure |
+| `500` | Signing/SEFAZ configuration error, SEFAZ transmission failure, or unexpected internal error |
 
 Enums currently accepted: `operationType` (`IMPORT`, `TRANSFER`, `EXPORT`), `processingMode` (`XML_ONLY`, `EMIT`), `ieStatus` (`CONTRIBUTOR`, `EXEMPT`, `NOT_CONTRIBUTOR`), `indicator` (`IMMEDIATE`, `DEFERRED`). Freight mode and tax codes are plain strings validated by the official XSD enumeration/patterns.
 

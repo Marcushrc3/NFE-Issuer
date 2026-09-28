@@ -29,6 +29,7 @@ import com.example.nfe.domain.RtcTaxation;
 import com.example.nfe.domain.TaxTotals;
 import com.example.nfe.domain.Totals;
 import com.example.nfe.domain.Transport;
+import com.example.nfe.domain.UnsupportedTaxationException;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
@@ -939,8 +940,10 @@ class NfeXmlGeneratorTest {
                 new BigDecimal("100.00"), new BigDecimal("18.00"), new BigDecimal("18.00"),
                 new BigDecimal("2.00"), new BigDecimal("2.00"), null, null, null));
 
-        assertThrows(IllegalStateException.class,
+        UnsupportedTaxationException exception = assertThrows(UnsupportedTaxationException.class,
                 () -> generator.generate(emissionWithItems(List.of(item))));
+        assertTrue(exception.getMessage().contains(
+                "ICMS CST '90' is not supported by this version of the NF-e engine"));
     }
 
     @Test
@@ -949,7 +952,7 @@ class NfeXmlGeneratorTest {
                 new BigDecimal("100.00"), new BigDecimal("18.00"), new BigDecimal("18.00"),
                 new BigDecimal("2.00"), new BigDecimal("2.00"), icmsSt(), null, null));
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(UnsupportedTaxationException.class,
                 () -> generator.generate(emissionWithItems(List.of(item))));
     }
 
@@ -958,7 +961,7 @@ class NfeXmlGeneratorTest {
         NfeItem item = itemWithIcms(new IcmsTax("40", "3", null, null, null,
                 null, null, null, null, null));
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(UnsupportedTaxationException.class,
                 () -> generator.generate(emissionWithItems(List.of(item))));
     }
 
