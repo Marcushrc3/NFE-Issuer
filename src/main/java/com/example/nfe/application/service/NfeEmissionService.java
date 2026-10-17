@@ -42,6 +42,19 @@ public class NfeEmissionService {
     private static final String EMIT_MESSAGE =
             "NF-e signed and submitted to the SEFAZ transmission boundary";
 
+    /**
+     * NT 2019.001 (rule B03-10, Group B, models 55/65, mandatory, rejection
+     * message 897 "Código numérico em formato inválido") prohibited cNF
+     * values: repeated digits (10 values) and sequential runs (10 values).
+     * Source: official technical note published on the National NF-e Portal
+     * (Nota Técnica 2019.001 v.1.70, 18/08/2025).
+     */
+    private static final java.util.Set<String> CNF_PROHIBITED_VALUES = java.util.Set.of(
+            "00000000", "11111111", "22222222", "33333333", "44444444",
+            "55555555", "66666666", "77777777", "88888888", "99999999",
+            "12345678", "23456789", "34567890", "45678901", "56789012",
+            "67890123", "78901234", "89012345", "90123456", "01234567");
+
     private final NfeXmlGenerator xmlGenerator;
     private final NfeXmlValidator xmlValidator;
     private final Optional<XmlSigner> xmlSigner;
@@ -170,6 +183,7 @@ public class NfeEmissionService {
      * the mapping can be verified directly in tests.
      */
     NfeEmission toDomain(String emissionId, NfeEmissionRequest request) {
+        validateRandomCode(request.randomCode(), request.number());
         List<NfeItem> items = toItems(request.items());
         Totals totals = request.totals() != null ? request.totals() : toTotals(items);
         return new NfeEmission(
@@ -219,6 +233,30 @@ public class NfeEmissionService {
                                 : value));
         return new Totals(itemsTotal, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO,
                 java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO, itemsTotal);
+    }
+
+    /**
+     * Official cNF rules for the random code: the XSD lexical pattern
+     * ({@code [0-9]{8}}) plus NT 2019.001 rule B03-10 — the value must not
+     * be one of the prohibited sequences (repeated digits or consecutive
+     * runs) and must not be numerically equal to the document number
+     * ({@code nNF}). Nothing is generated, derived or defaulted.
+     */
+    private void validateRandomCode(String randomCode, Long number) {
+        if (randomCode == null) {
+            return;
+        }
+        if (!randomCode.matches("[0-9]{8}")) {
+            throw new IllegalArgumentException("randomCode (cNF) must be exactly 8 digits");
+        }
+        if (CNF_PROHIBITED_VALUES.contains(randomCode)) {
+            throw new IllegalArgumentException(
+                    "randomCode (cNF) '" + randomCode + "' is not allowed by NT 2019.001");
+        }
+        if (number != null && Long.parseLong(randomCode) == number) {
+            throw new IllegalArgumentException(
+                    "randomCode (cNF) must not be equal to the document number (nNF)");
+        }
     }
 
     private Payment toPayment(PaymentDto dto) {

@@ -16,7 +16,8 @@ The service is fully independent from any legacy system: the only entry point is
 - `processingMode = XML_ONLY`: generates and XSD-validates the unsigned `infNFe`; returns the XML. No credentials or SEFAZ contact.
 - `processingMode = EMIT`: signs the exact generated XML, validates the signed document against the complete official schema, transmits it to SEFAZ and maps the outcome to `AUTHORIZED` / `REJECTED` / `PROCESSING`. Never fabricates an authorization result.
 - Access key (44-digit `chave de acesso`) with official modulo-11 check digit (`cDV`); explicit `cDV` mismatch is rejected.
-- Full API surface for a schema-valid NF-e request: `ide` identification fields, issuer/recipient addresses, product tributary fields (`cEAN`, `cEANTrib`, `uTrib/qTrib/vUnTrib`, `indTot`), item taxation (ICMS 00/30/40, IPI, PIS, COFINS, II, IS, IBSCBS/RTC), `taxTotals`/`ICMSTot`, payment and transport (`modFrete` + carrier).
+- Official `cNF` validation: XSD pattern (`[0-9]{8}`) plus NT 2019.001 rule **B03-10** (rejection 897): the 20 prohibited repeated/sequential values and `cNF ≠ nNF`. The API never generates or defaults `cNF`.
+- Full API surface for a schema-valid NF-e request: `ide` identification fields, issuer identity + `IE` (Inscrição Estadual, official `TIe` pattern) and address, recipient, product tributary fields (`cEAN`, `cEANTrib`, `uTrib/qTrib/vUnTrib`, `indTot`), item taxation (ICMS 00/30/40, IPI, PIS, COFINS, II, IS, IBSCBS/RTC incl. `gCBS`/`gTribRegular`), `taxTotals`/`ICMSTot`, explicit commercial totals (`vFrete`, `vSeg`, `vDesc`, `vOutro`, `vNF` — pass-through, no derivation), payment and transport (`modFrete` + carrier).
 - XMLDSig signing (RSA-SHA1 / SHA-1, official NF-e parameters) and hardened XML parsing (XXE protection, DOCTYPE rejected).
 - SEFAZ NFeAutorizacao4 transmission adapter (opt-in) with structured result mapping; integration tests use an in-process SEFAZ mock.
 - Standardized `ErrorResponse` body for all 4xx/5xx failures.
@@ -24,9 +25,11 @@ The service is fully independent from any legacy system: the only entry point is
 **Partially implemented / not yet exposed by the API**
 
 - `ItemDto`: `cest`, `xPed`, `nItemPed` and per-item import details exist in the domain but are not exposed yet.
-- `TaxTotals.is` and `TaxTotals.ibsCbs` (the `total/ISTot` and `total/IBSCBSTot` XML groups) are accepted by the API but not mapped to XML yet.
+- `TaxTotals.is` maps to `total/ISTot`. `TaxTotals.ibsCbs` maps only `IBSCBSTot/vBCIBSCBS`: the `gIBS`/`gCBS` total groups require presumed-credit totals (`vCredPres`/`vCredPresCondSus`) that are not modeled, so jurisdiction/amount/CBS totals are rejected explicitly when informed — never silently dropped.
 - PIS/COFINS/IPI official variant groups (`PISAliq`, `PISQtde`, `PISST`, `IPITrib`, `IPINT`, …) are deliberately unsupported by the current mapper.
 - `ICMSTot` monophase fields and several optional `transp` groups (`retTransp`, vehicles, volumes) are not modeled.
+- `infNFeSupl` (QRCode) is not generated (optional in the schema).
+- Business/fiscal rules are not implemented: e.g. IE obligation per tax regime, CST cross-field checks beyond the schema.
 
 **Not implemented**
 
@@ -102,6 +105,10 @@ The application starts on `http://localhost:8080` (default Spring Boot port — 
 
 Secrets are supplied through environment variables at runtime and are never committed to source control.
 
+For local `EMIT` testing there is a committed TEST-ONLY self-signed keystore (`src/test/resources/testcert/nfe-test.p12`, alias `nfe-test`, password `changeit`). Use it only against a local SEFAZ mock — real SEFAZ environments accept only ICP-Brasil (A1) certificates.
+
+> The project has **not** performed a real SEFAZ authorization: the integration tests use an in-process SEFAZ mock (SOAP 1.2 `NFeAutorizacao4` responses). This is not a production-readiness statement.
+
 ## API
 
 ### `POST /api/v1/nfe` — issue an NF-e
@@ -118,7 +125,7 @@ Response statuses (always with a JSON body):
 | HTTP | Meaning |
 |---|---|
 | `202` | Processed — see `status` field (`XML_GENERATED`, `AUTHORIZED`, `REJECTED`, `PROCESSING`) |
-| `400` | Invalid request: bean validation, domain invariants, access-key `cDV` mismatch, unsupported ICMS taxation, or generated-XML XSD validation failure |
+| `400` | Invalid request: bean validation, domain invariants (including the official `cNF` rules), access-key `cDV` mismatch, unsupported ICMS taxation, or generated-XML XSD validation failure |
 | `500` | Signing/SEFAZ configuration error, SEFAZ transmission failure, or unexpected internal error |
 
 Enums currently accepted: `operationType` (`IMPORT`, `TRANSFER`, `EXPORT`), `processingMode` (`XML_ONLY`, `EMIT`), `ieStatus` (`CONTRIBUTOR`, `EXEMPT`, `NOT_CONTRIBUTOR`), `indicator` (`IMMEDIATE`, `DEFERRED`). Freight mode and tax codes are plain strings validated by the official XSD enumeration/patterns.
@@ -141,4 +148,4 @@ Notable test suites:
 - `NfeAccessKeyGeneratorTest` — official modulo-11 check digit.
 - `NfeEmissionFlowIntegrationTest` — full HTTP end-to-end flow against an in-process SEFAZ mock (no real SEFAZ contact, no production certificates).
 
-> Current known state: the HTTP end-to-end scenarios in `NfeEmissionFlowIntegrationTest` that assert `202` still fail because their fixture does not yet use the full request surface added in increments 50–54 (the fixture update is tracked separately). The focused suites above are green.
+> Current known state: the full suite runs with `mvn test` — **494 tests, 0 failures, 0 errors, 1 skipped** (`NfeSefazTransmitterIntegrationTest`, which requires a real SEFAZ environment and is `@Disabled` by design). All HTTP end-to-end scenarios in `NfeEmissionFlowIntegrationTest` (XML_ONLY and EMIT against an in-process SEFAZ mock) pass.

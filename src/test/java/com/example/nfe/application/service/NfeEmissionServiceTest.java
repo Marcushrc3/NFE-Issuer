@@ -525,6 +525,41 @@ class NfeEmissionServiceTest {
     }
 
     @Test
+    void shouldAcceptValidRandomCode() {
+        NfeEmission emission = service.toDomain("emission-29", requestWithRandomCode("12345001", 1001L));
+
+        assertEquals("12345001", emission.randomCode());
+    }
+
+    @Test
+    void shouldRejectProhibitedSequentialCnf() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.toDomain("emission-30", requestWithRandomCode("12345678", 1001L)));
+
+        assertTrue(exception.getMessage().contains("NT 2019.001"));
+    }
+
+    @Test
+    void shouldRejectRepeatedDigitCnf() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.toDomain("emission-31", requestWithRandomCode("00000000", 1001L)));
+    }
+
+    @Test
+    void shouldRejectCnfEqualToDocumentNumber() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.toDomain("emission-32", requestWithRandomCode("00001001", 1001L)));
+
+        assertTrue(exception.getMessage().contains("nNF"));
+    }
+
+    @Test
+    void shouldRejectCnfWithWrongLength() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.toDomain("emission-33", requestWithRandomCode("123", 1001L)));
+    }
+
+    @Test
     void shouldMapRecipientIeStatusToDomain() {
         NfeEmission emission = service.toDomain("emission-11", requestWithRecipientIeStatus());
 
@@ -1007,6 +1042,28 @@ class NfeEmissionServiceTest {
     private static Totals commercialTotals() {
         return new Totals(new BigDecimal("10.50"), new BigDecimal("1.25"), new BigDecimal("0.50"),
                 new BigDecimal("0.75"), new BigDecimal("0.10"), new BigDecimal("11.60"));
+    }
+
+    private static NfeEmissionRequest requestWithRandomCode(String randomCode, Long number) {
+        return new NfeEmissionRequest(
+                "REF-017",
+                OperationType.TRANSFER,
+                "55",
+                3,
+                number,
+                OffsetDateTime.parse("2026-09-21T10:30:00-03:00"),
+                "Remessa para industrializa\u00e7\u00e3o",
+                "3550308",
+                "35", randomCode, "1", "1", "1", "1", "0", "2", "1", "1", "1", "0", "1.0",
+                issuer(),
+                recipient(),
+                items(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
     private static TaxTotals taxTotals() {
