@@ -210,6 +210,48 @@ class NfeEmissionFlowIntegrationTest {
         }
 
         @Test
+        void issuerStateRegistrationAndCommercialTotalsAreMappedToXml() throws Exception {
+            NfeEmissionRequest base = validRequest(ProcessingMode.XML_ONLY);
+            NfeEmissionRequest request = new NfeEmissionRequest(
+                    base.externalReference(), base.operationType(), base.model(), base.series(),
+                    base.number(), base.emissionDate(), base.operationDescription(),
+                    base.fiscalEstablishmentCity(), base.stateCode(), base.randomCode(),
+                    base.operationDirection(), base.destinationType(), base.printFormat(),
+                    base.emissionType(), base.checkDigit(), base.environment(), base.purpose(),
+                    base.finalConsumer(), base.presenceIndicator(), base.processType(),
+                    base.processVersion(),
+                    new IssuerDto("Acme Ltd", "12345678000199", "123456789",
+                            "Acme Comercio Ltda", "3",
+                            new Address("Main St", "100", "Sao Paulo", "SP", "01310100",
+                                    "Centro", "3550308")),
+                    base.recipient(), base.items(), base.taxTotals(),
+                    new Totals(new BigDecimal("10.50"), new BigDecimal("1.25"),
+                            new BigDecimal("0.50"), new BigDecimal("0.75"),
+                            new BigDecimal("0.10"), new BigDecimal("11.60")),
+                    base.importDetails(), base.exportDetails(), base.payment(), base.transport(),
+                    base.processingMode());
+
+            String response = mockMvc.perform(post("/api/v1/nfe")
+                            .contentType("application/json")
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isAccepted())
+                    .andExpect(jsonPath("$.status").value("XML_GENERATED"))
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+
+            String xml = readJsonString(response, "xml");
+            assertTrue(xml.contains("<IE>123456789</IE>"));
+            assertTrue(xml.contains("<vProd>10.50</vProd>"));
+            assertTrue(xml.contains("<vFrete>1.25</vFrete>"));
+            assertTrue(xml.contains("<vSeg>0.50</vSeg>"));
+            assertTrue(xml.contains("<vDesc>0.75</vDesc>"));
+            assertTrue(xml.contains("<vOutro>0.10</vOutro>"));
+            assertTrue(xml.contains("<vNF>11.60</vNF>"));
+            new NfeXmlValidator().validateInfNFe(xml);
+        }
+
+        @Test
         void xmlOnlyRequestRunsGenerationAndValidationWithoutSigner() {
             assertThrows(NfeXmlValidationException.class,
                     () -> service.issue(request(ProcessingMode.XML_ONLY)));

@@ -30,6 +30,7 @@ import com.example.nfe.domain.IsTax;
 import com.example.nfe.domain.ItemTaxation;
 import com.example.nfe.domain.PisCofinsTax;
 import com.example.nfe.domain.RtcTaxation;
+import com.example.nfe.domain.Totals;
 import com.example.nfe.domain.TaxTotals;
 import com.example.nfe.domain.Transport;
 import com.example.nfe.domain.EmissionStatus;
@@ -498,6 +499,32 @@ class NfeEmissionServiceTest {
     }
 
     @Test
+    void shouldMapIssuerStateRegistrationToDomain() {
+        NfeEmission emission = service.toDomain("emission-26", requestWithIssuerStateRegistration());
+
+        assertEquals("123456789", emission.issuer().stateRegistration());
+    }
+
+    @Test
+    void shouldPassThroughExplicitCommercialTotalsWithoutDerivation() {
+        Totals explicit = commercialTotals();
+        NfeEmission emission = service.toDomain("emission-27", requestWithCommercialTotals(explicit));
+
+        assertEquals(explicit, emission.totals(),
+                "explicit commercial totals must pass through without derivation");
+    }
+
+    @Test
+    void shouldDeriveCommercialTotalsFromItemsWhenOmitted() {
+        NfeEmission emission = service.toDomain("emission-28", transferRequest());
+
+        assertEquals(new BigDecimal("10.50"), emission.totals().itemsTotal());
+        assertEquals(BigDecimal.ZERO, emission.totals().freight());
+        assertEquals(BigDecimal.ZERO, emission.totals().discount());
+        assertEquals(new BigDecimal("10.50"), emission.totals().totalValue());
+    }
+
+    @Test
     void shouldMapRecipientIeStatusToDomain() {
         NfeEmission emission = service.toDomain("emission-11", requestWithRecipientIeStatus());
 
@@ -940,6 +967,46 @@ class NfeEmissionServiceTest {
                 null,
                 null,
                 null);
+    }
+
+    private static NfeEmissionRequest requestWithIssuerStateRegistration() {
+        return new NfeEmissionRequest(
+                "REF-015",
+                OperationType.TRANSFER,
+                null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
+                new IssuerDto("Acme Ltd", "12345678000199", "123456789", null, null, null),
+                recipient(),
+                items(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    private static NfeEmissionRequest requestWithCommercialTotals(Totals totals) {
+        return new NfeEmissionRequest(
+                "REF-016",
+                OperationType.TRANSFER,
+                null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
+                issuer(),
+                recipient(),
+                items(),
+                null,
+                totals,
+                null,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    private static Totals commercialTotals() {
+        return new Totals(new BigDecimal("10.50"), new BigDecimal("1.25"), new BigDecimal("0.50"),
+                new BigDecimal("0.75"), new BigDecimal("0.10"), new BigDecimal("11.60"));
     }
 
     private static TaxTotals taxTotals() {

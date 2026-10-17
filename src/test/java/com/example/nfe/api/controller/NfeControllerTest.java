@@ -532,6 +532,57 @@ class NfeControllerTest {
     }
 
     @Test
+    void shouldAcceptIssuerStateRegistrationAndCommercialTotals() throws Exception {
+        stubReceivedResponse();
+
+        mockMvc.perform(post("/api/v1/nfe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "externalReference": "REF-1",
+                                  "operationType": "TRANSFER",
+                                  "processingMode": "XML_ONLY",
+                                  "issuer": { "name": "Acme Ltd", "document": "12345678000199",
+                                              "stateRegistration": "123456789" },
+                                  "recipient": { "name": "Beta Corp", "document": "98765432000188" },
+                                  "items": [ { "productCode": "P-1", "description": "Widget",
+                                               "ncm": "84818090", "unit": "UN", "quantity": 1,
+                                               "unitValue": 10.50, "totalValue": 10.50,
+                                               "cfop": "5102", "origin": "0" } ],
+                                  "totals": { "itemsTotal": 10.50, "freight": 1.25, "insurance": 0.50,
+                                              "discount": 0.75, "otherCharges": 0.10, "totalValue": 11.60 }
+                                }
+                                """))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("XML_GENERATED"));
+    }
+
+    @Test
+    void shouldRejectInvalidIssuerStateRegistration() throws Exception {
+        mockMvc.perform(post("/api/v1/nfe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "externalReference": "REF-1",
+                                  "operationType": "TRANSFER",
+                                  "processingMode": "XML_ONLY",
+                                  "issuer": { "name": "Acme Ltd", "document": "12345678000199",
+                                              "stateRegistration": "ABC" },
+                                  "recipient": { "name": "Beta Corp", "document": "98765432000188" },
+                                  "items": [ { "productCode": "P-1", "description": "Widget",
+                                               "ncm": "84818090", "unit": "UN", "quantity": 1,
+                                               "unitValue": 10.50, "totalValue": 10.50,
+                                               "cfop": "5102", "origin": "0" } ]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.fieldErrors[?(@.field == 'issuer.stateRegistration')]").exists());
+
+        verifyNoInteractions(nfeEmissionService);
+    }
+
+    @Test
     void shouldAcceptItemTributaryFields() throws Exception {
         stubReceivedResponse();
 

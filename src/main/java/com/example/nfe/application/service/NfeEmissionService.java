@@ -171,7 +171,7 @@ public class NfeEmissionService {
      */
     NfeEmission toDomain(String emissionId, NfeEmissionRequest request) {
         List<NfeItem> items = toItems(request.items());
-        Totals totals = toTotals(items);
+        Totals totals = request.totals() != null ? request.totals() : toTotals(items);
         return new NfeEmission(
                 emissionId,
                 request.externalReference(),
@@ -235,7 +235,7 @@ public class NfeEmissionService {
     }
 
     private Issuer toIssuer(IssuerDto dto) {
-        return new Issuer(dto.name(), dto.document(), null, dto.address(),
+        return new Issuer(dto.name(), dto.document(), dto.stateRegistration(), dto.address(),
                 dto.tradeName(), dto.taxRegime());
     }
 
