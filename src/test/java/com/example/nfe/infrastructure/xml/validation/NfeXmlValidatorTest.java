@@ -192,6 +192,16 @@ class NfeXmlValidatorTest {
     }
 
     @Test
+    void shouldValidateInfNfeWithRtcGroupsAndTotals() {
+        // Proves that the mapped gCBS/gTribRegular (item level) and
+        // ISTot/IBSCBSTot (total level) are schema-valid per PL_010f.
+        NfeXmlGenerator generator = new NfeXmlGenerator(new NfeXmlMapper());
+        String xml = generator.generate(NfeFixtures.fullEmissionWithRtcGroups());
+
+        assertDoesNotThrow(() -> validator.validateInfNFe(xml));
+    }
+
+    @Test
     void shouldRejectInfNfeValidationForInvalidInfNfe() {
         NfeXmlGenerator generator = new NfeXmlGenerator(new NfeXmlMapper());
         String xml = generator.generate(NfeFixtures.invalidInfNfeEmission());
@@ -232,7 +242,7 @@ class NfeXmlValidatorTest {
                 "01", new BigDecimal("100.00"), new BigDecimal("1.65"), new BigDecimal("1.65"),
                 "01", new BigDecimal("100.00"), new BigDecimal("7.60"), new BigDecimal("7.60"));
         ImportTax importTax = new ImportTax(
-                new BigDecimal("100.00"), new BigDecimal("10.00"), new BigDecimal("10.00"),
+                new BigDecimal("100.00"), null, new BigDecimal("10.00"),
                 new BigDecimal("5.00"), new BigDecimal("1.50"));
         IsTax is = new IsTax("900", "001000",
                 new BigDecimal("100.00"), new BigDecimal("10.00"), new BigDecimal("1.50"),

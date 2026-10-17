@@ -15,9 +15,10 @@ import java.math.BigDecimal;
  * {@code vIBS}, {@code gCBS}, {@code gTribRegular} and
  * {@code gTribCompraGov}.
  * <p>
- * This increment models {@code vBC}, {@code gIBSUF}, {@code gIBSMun} and
- * {@code vIBS}. {@code gCBS} and {@code gTribRegular} are future
- * increments and are deliberately not represented here.
+ * This increment models {@code vBC}, {@code gIBSUF}, {@code gIBSMun},
+ * {@code vIBS}, {@code gCBS} and {@code gTribRegular}.
+ * {@code gALCZFMCBS} and {@code gTribCompraGov} are not modelled by the
+ * domain and remain absent.
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 public class GibsCbs {
@@ -33,6 +34,12 @@ public class GibsCbs {
 
     @XmlElement(name = "vIBS")
     private BigDecimal ibsAmount;
+
+    @XmlElement(name = "gCBS")
+    private Cbs cbs;
+
+    @XmlElement(name = "gTribRegular")
+    private TribRegular tribRegular;
 
     public BigDecimal getTaxBase() {
         return taxBase;
@@ -64,5 +71,21 @@ public class GibsCbs {
 
     public void setIbsAmount(BigDecimal ibsAmount) {
         this.ibsAmount = ibsAmount;
+    }
+
+    public Cbs getCbs() {
+        return cbs;
+    }
+
+    public void setCbs(Cbs cbs) {
+        this.cbs = cbs;
+    }
+
+    public TribRegular getTribRegular() {
+        return tribRegular;
+    }
+
+    public void setTribRegular(TribRegular tribRegular) {
+        this.tribRegular = tribRegular;
     }
 }

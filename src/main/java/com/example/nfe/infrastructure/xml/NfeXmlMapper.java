@@ -2,7 +2,9 @@ package com.example.nfe.infrastructure.xml;
 
 import com.example.nfe.application.accesskey.NfeAccessKeyGenerator;
 import com.example.nfe.domain.Address;
+import com.example.nfe.domain.CbsTax;
 import com.example.nfe.domain.IbsCbsTaxation;
+import com.example.nfe.domain.IbsCbsTotals;
 import com.example.nfe.domain.IbsMunicipalityTax;
 import com.example.nfe.domain.IbsUfTax;
 import com.example.nfe.domain.IcmsStTax;
@@ -11,6 +13,7 @@ import com.example.nfe.domain.IcmsTotals;
 import com.example.nfe.domain.ImportTax;
 import com.example.nfe.domain.IpiTax;
 import com.example.nfe.domain.IsTax;
+import com.example.nfe.domain.IsTotals;
 import com.example.nfe.domain.Issuer;
 import com.example.nfe.domain.ItemTaxation;
 import com.example.nfe.domain.NfeEmission;
@@ -21,6 +24,7 @@ import com.example.nfe.domain.PaymentIndicator;
 import com.example.nfe.domain.PisCofinsTax;
 import com.example.nfe.domain.Recipient;
 import com.example.nfe.domain.RecipientIeStatus;
+import com.example.nfe.domain.RegularTaxation;
 import com.example.nfe.domain.RtcDeferral;
 import com.example.nfe.domain.RtcDevolution;
 import com.example.nfe.domain.RtcReduction;
@@ -108,10 +112,12 @@ public class NfeXmlMapper {
     }
 
     /**
-     * Builds the {@code total}/{@code ICMSTot} group from explicit domain
-     * values only — nothing is calculated or derived (vNF is never
-     * recomputed, tax amounts are never summed). A {@code total} group is
-     * only generated when the emission carries totals or tax totals.
+     * Builds the {@code total} group from explicit domain values only —
+     * nothing is calculated or derived (vNF is never recomputed, tax
+     * amounts are never summed). A {@code total} group is only generated
+     * when the emission carries totals or tax totals. Emitted children
+     * follow the official schema order: {@code ICMSTot}, {@code ISTot},
+     * {@code IBSCBSTot}.
      */
     private Total toTotal(NfeEmission emission) {
         Totals totals = emission.totals();
@@ -152,7 +158,53 @@ public class NfeXmlMapper {
         }
         Total total = new Total();
         total.setIcmsTot(icmsTot);
+        if (taxTotals != null) {
+            total.setIstot(toIstot(taxTotals.is()));
+            total.setIbsCbsTot(toIbsCbsTot(taxTotals.ibsCbs()));
+        }
         return total;
+    }
+
+    /**
+     * {@code ISTot} mapping (verified {@code TISTot}): {@code vIS} from the
+     * domain's explicit {@code IsTotals.amount}. A null or empty
+     * {@code IsTotals} produces no element — nothing to lose.
+     */
+    private Istot toIstot(IsTotals isTotals) {
+        if (isTotals == null || isTotals.amount() == null) {
+            return null;
+        }
+        Istot xml = new Istot();
+        xml.setAmount(isTotals.amount());
+        return xml;
+    }
+
+    /**
+     * {@code IBSCBSTot} mapping (verified {@code TIBSCBSMonoTot}): only
+     * {@code vBCIBSCBS} can be emitted. The {@code gIBS}/{@code gCBS} total
+     * groups require presumed-credit totals ({@code vCredPres}/
+     * {@code vCredPresCondSus}), which this version does not model — so
+     * jurisdiction, amount and CBS totals are rejected explicitly when
+     * informed: never silently dropped, never emitted schema-invalid. An
+     * all-null {@code IbsCbsTotals} produces no element.
+     */
+    private IbsCbsTot toIbsCbsTot(IbsCbsTotals ibsCbsTotals) {
+        if (ibsCbsTotals == null
+                || (ibsCbsTotals.base() == null && ibsCbsTotals.uf() == null
+                && ibsCbsTotals.municipality() == null && ibsCbsTotals.amount() == null
+                && ibsCbsTotals.cbs() == null)) {
+            return null;
+        }
+        if (ibsCbsTotals.uf() != null || ibsCbsTotals.municipality() != null
+                || ibsCbsTotals.amount() != null || ibsCbsTotals.cbs() != null) {
+            throw new UnsupportedTaxationException("IBSCBSTot gIBS/gCBS totals are not supported: "
+                    + "the official schema requires presumed-credit totals "
+                    + "(vCredPres/vCredPresCondSus) which this version does not model; "
+                    + "only vBCIBSCBS can be emitted; the request cannot be processed");
+        }
+        IbsCbsTot xml = new IbsCbsTot();
+        xml.setBase(ibsCbsTotals.base());
+        return xml;
     }
 
     /**
@@ -297,11 +349,11 @@ public class NfeXmlMapper {
     }
 
     /**
-     * Core IBSCBS mapping (verified {@code TTribNFe}/{@code TCIBS_NFe}):
-     * CST, cClassTrib, indDoacao and gIBSCBS (vBC + gIBSUF). Deferred to
-     * future increments: gIBSMun/vIBS/gCBS, gTribRegular, gALCZFMCBS,
-     * monophase, credit and reversal groups. An all-null RTC produces no
-     * element.
+     * IBSCBS mapping (verified {@code TTribNFe}/{@code TCIBS_NFe}):
+     * CST, cClassTrib, indDoacao and gIBSCBS (vBC, gIBSUF, gIBSMun, vIBS,
+     * gCBS, gTribRegular). gALCZFMCBS, gTribCompraGov, monophase, credit
+     * and reversal groups are not modelled by the domain and remain
+     * absent. An all-null RTC produces no element.
      */
     private IbsCbs toIbsCbs(RtcTaxation rtc) {
         if (rtc == null || rtc.ibsCbs() == null) {
@@ -322,11 +374,13 @@ public class NfeXmlMapper {
 
     /**
      * gIBSCBS mapping (verified {@code TCIBS_NFe}): {@code vBC},
-     * {@code gIBSUF}, {@code gIBSMun} and {@code vIBS} in this increment.
-     * No empty group is generated. IMPORTANT: {@code vIBS} is mapped from
-     * the domain's explicit {@code ibsAmount} — it is NEVER calculated from
-     * {@code vIBSUF} + {@code vIBSMun}. Fiscal calculations do not belong to
-     * the XML infrastructure layer.
+     * {@code gIBSUF}, {@code gIBSMun}, {@code vIBS}, {@code gCBS} and
+     * {@code gTribRegular}. No empty group is generated, and groups with
+     * partial data fail explicitly — never silently dropped, never emitted
+     * schema-invalid. IMPORTANT: {@code vIBS} is mapped from the domain's
+     * explicit {@code ibsAmount} — it is NEVER calculated from
+     * {@code vIBSUF} + {@code vIBSMun}. Fiscal calculations do not belong
+     * to the XML infrastructure layer.
      */
     private GibsCbs toGibsCbs(IbsCbsTaxation ibsCbs) {
         if (ibsCbs == null) {
@@ -334,8 +388,11 @@ public class NfeXmlMapper {
         }
         IbsUf ibsUf = toIbsUf(ibsCbs.ibsUf());
         IbsMun ibsMun = toIbsMun(ibsCbs.ibsMunicipality());
+        Cbs cbs = toCbs(ibsCbs.cbs());
+        TribRegular tribRegular = toTribRegular(ibsCbs.regularTaxation());
         if (ibsCbs.taxBase() == null && ibsUf == null
-                && ibsMun == null && ibsCbs.ibsAmount() == null) {
+                && ibsMun == null && ibsCbs.ibsAmount() == null
+                && cbs == null && tribRegular == null) {
             return null;
         }
         GibsCbs xml = new GibsCbs();
@@ -343,6 +400,70 @@ public class NfeXmlMapper {
         xml.setIbsUf(ibsUf);
         xml.setIbsMun(ibsMun);
         xml.setIbsAmount(ibsCbs.ibsAmount());
+        xml.setCbs(cbs);
+        xml.setTribRegular(tribRegular);
+        return xml;
+    }
+
+    /**
+     * {@code gCBS} mapping (verified {@code TCIBS_NFe}): {@code pCBS},
+     * {@code gDif}, {@code gDevTrib}, {@code gRed}, {@code vCBS}.
+     * {@code pCBS} and {@code vCBS} are required whenever the group is
+     * present; an all-null {@code CbsTax} produces no element.
+     */
+    private Cbs toCbs(CbsTax cbs) {
+        if (cbs == null || (cbs.rate() == null && cbs.amount() == null
+                && cbs.deferral() == null && cbs.devolution() == null
+                && cbs.reduction() == null)) {
+            return null;
+        }
+        if (cbs.rate() == null || cbs.amount() == null) {
+            throw new UnsupportedTaxationException("gCBS requires pCBS (rate) and vCBS (amount); "
+                    + "the request cannot be processed");
+        }
+        Cbs xml = new Cbs();
+        xml.setRate(cbs.rate());
+        xml.setGdif(toGdif(cbs.deferral()));
+        xml.setGdevTrib(toGdevTrib(cbs.devolution()));
+        xml.setGred(toGred(cbs.reduction()));
+        xml.setAmount(cbs.amount());
+        return xml;
+    }
+
+    /**
+     * {@code gTribRegular} mapping (verified {@code TTribRegular}): all
+     * eight fields are required by the schema whenever the group is
+     * present, so partial data fails explicitly instead of producing
+     * schema-invalid XML. An all-null {@code RegularTaxation} produces no
+     * element.
+     */
+    private TribRegular toTribRegular(RegularTaxation regular) {
+        if (regular == null
+                || (regular.cst() == null && regular.cClassTrib() == null
+                && regular.ibsUfEffectiveRate() == null && regular.ibsUfTaxAmount() == null
+                && regular.ibsMunicipalityEffectiveRate() == null
+                && regular.ibsMunicipalityTaxAmount() == null
+                && regular.cbsEffectiveRate() == null && regular.cbsTaxAmount() == null)) {
+            return null;
+        }
+        if (regular.cst() == null || regular.cClassTrib() == null
+                || regular.ibsUfEffectiveRate() == null || regular.ibsUfTaxAmount() == null
+                || regular.ibsMunicipalityEffectiveRate() == null
+                || regular.ibsMunicipalityTaxAmount() == null
+                || regular.cbsEffectiveRate() == null || regular.cbsTaxAmount() == null) {
+            throw new UnsupportedTaxationException("gTribRegular requires all eight fields "
+                    + "(CSTReg, cClassTribReg, effective rates and tax amounts for IBSUF, "
+                    + "IBSMun and CBS); the request cannot be processed");
+        }
+        TribRegular xml = new TribRegular();
+        xml.setCst(regular.cst());
+        xml.setCClassTrib(regular.cClassTrib());
+        xml.setIbsUfEffectiveRate(regular.ibsUfEffectiveRate());
+        xml.setIbsUfTaxAmount(regular.ibsUfTaxAmount());
+        xml.setIbsMunicipalityEffectiveRate(regular.ibsMunicipalityEffectiveRate());
+        xml.setIbsMunicipalityTaxAmount(regular.ibsMunicipalityTaxAmount());
+        xml.setCbsEffectiveRate(regular.cbsEffectiveRate());
+        xml.setCbsTaxAmount(regular.cbsTaxAmount());
         return xml;
     }
 
@@ -455,11 +576,17 @@ public class NfeXmlMapper {
 
     /**
      * Conservative II mapping. The official schema's {@code II} group has no
-     * tax-rate element, so {@code ImportTax.taxRate()} is deliberately
-     * unmapped. {@code ImportItemDetails} is a separate concept and is not
-     * mapped here. An all-null {@code ImportTax} produces no element.
+     * tax-rate element, so {@code ImportTax.taxRate()} is rejected
+     * explicitly when informed — it can never be represented in the XML.
+     * {@code ImportItemDetails} is a separate concept and is not mapped
+     * here. An all-null {@code ImportTax} produces no element.
      */
     private Ii toIi(ImportTax importTax) {
+        if (importTax.taxRate() != null) {
+            throw new UnsupportedTaxationException("ImportTax.taxRate is not supported: "
+                    + "the official NF-e schema has no tax-rate field in the II group "
+                    + "(only vBC, vDespAdu, vII and vIOF); the request cannot be processed");
+        }
         if (importTax.taxBase() == null && importTax.taxAmount() == null
                 && importTax.customsExpenses() == null && importTax.iofAmount() == null) {
             return null;

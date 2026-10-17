@@ -1,8 +1,12 @@
 package com.example.nfe.infrastructure.xml;
 
 import com.example.nfe.domain.Address;
+import com.example.nfe.domain.CbsTax;
+import com.example.nfe.domain.CbsTotals;
 import com.example.nfe.domain.EmissionStatus;
 import com.example.nfe.domain.IbsCbsTaxation;
+import com.example.nfe.domain.IbsCbsTotals;
+import com.example.nfe.domain.IbsJurisdictionTotals;
 import com.example.nfe.domain.IbsMunicipalityTax;
 import com.example.nfe.domain.IbsUfTax;
 import com.example.nfe.domain.IcmsStTax;
@@ -11,6 +15,7 @@ import com.example.nfe.domain.IcmsTotals;
 import com.example.nfe.domain.ImportTax;
 import com.example.nfe.domain.IpiTax;
 import com.example.nfe.domain.IsTax;
+import com.example.nfe.domain.IsTotals;
 import com.example.nfe.domain.Issuer;
 import com.example.nfe.domain.ItemTaxation;
 import com.example.nfe.domain.NfeEmission;
@@ -22,6 +27,7 @@ import com.example.nfe.domain.PaymentIndicator;
 import com.example.nfe.domain.PisCofinsTax;
 import com.example.nfe.domain.Recipient;
 import com.example.nfe.domain.RecipientIeStatus;
+import com.example.nfe.domain.RegularTaxation;
 import com.example.nfe.domain.RtcDeferral;
 import com.example.nfe.domain.RtcDevolution;
 import com.example.nfe.domain.RtcReduction;
@@ -30,6 +36,7 @@ import com.example.nfe.domain.TaxTotals;
 import com.example.nfe.domain.Totals;
 import com.example.nfe.domain.Transport;
 import com.example.nfe.domain.UnsupportedTaxationException;
+import com.example.nfe.infrastructure.xml.validation.NfeXmlValidator;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
@@ -1203,8 +1210,10 @@ class NfeXmlGeneratorTest {
     @Test
     void shouldNotGenerateImportTaxRateElement() throws Exception {
         // Official schema verified: the II group contains vBC, vDespAdu, vII
-        // and vIOF only — there is no pII rate element. ImportTax.taxRate()
-        // is deliberately unmapped.
+        // and vIOF only — there is no pII rate element. A taxRate in the
+        // request is rejected explicitly (see
+        // shouldRejectImportTaxRateWhenInformed), so the generated XML can
+        // never carry one.
         String xml = generator.generate(emissionWithItems(List.of(taxedItemWithIi())));
         Document document = parse(xml);
 
@@ -2045,6 +2054,114 @@ class NfeXmlGeneratorTest {
         assertNull(xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/vIBS"));
     }
 
+    @Test
+    void shouldMapIsTotalsToIstot() throws Exception {
+        String xml = generator.generate(emissionWithRtcTotals());
+        Document document = parse(xml);
+
+        assertEquals("7.77", xpath(document, "/NFe/infNFe/total/ISTot/vIS"));
+    }
+
+    @Test
+    void shouldNotEmitIstotWhenIsAmountIsNull() throws Exception {
+        String xml = generator.generate(emissionWithRtcTotals(new IsTotals(null)));
+        Document document = parse(xml);
+
+        assertNull(xpath(document, "/NFe/infNFe/total/ISTot"));
+    }
+
+    @Test
+    void shouldMapIbsCbsTotalsBaseToIbsCbsTot() throws Exception {
+        String xml = generator.generate(emissionWithRtcTotals());
+        Document document = parse(xml);
+
+        assertEquals("200.00", xpath(document, "/NFe/infNFe/total/IBSCBSTot/vBCIBSCBS"));
+        assertNull(xpath(document, "/NFe/infNFe/total/IBSCBSTot/gIBS"));
+        assertNull(xpath(document, "/NFe/infNFe/total/IBSCBSTot/gCBS"));
+    }
+
+    @Test
+    void shouldRejectIbsCbsTotalsWithJurisdictionOrAmountOrCbsTotals() {
+        // gIBS/gCBS totals would require presumed-credit totals
+        // (vCredPres/vCredPresCondSus) the domain does not model: explicit
+        // rejection instead of a silent drop.
+        UnsupportedTaxationException exception = assertThrows(UnsupportedTaxationException.class,
+                () -> generator.generate(emissionWithRtcTotals(new IsTotals(null), fullIbsCbsTotals())));
+        assertTrue(exception.getMessage().contains("vCredPres"));
+    }
+
+    @Test
+    void shouldPreserveTotalChildrenOrderWithIstotAndIbsCbsTot() throws Exception {
+        String xml = generator.generate(emissionWithRtcTotals());
+        Document document = parse(xml);
+
+        assertEquals("ICMSTot", xpath(document, "name(/NFe/infNFe/total/*[1])"));
+        assertEquals("ISTot", xpath(document, "name(/NFe/infNFe/total/*[2])"));
+        assertEquals("IBSCBSTot", xpath(document, "name(/NFe/infNFe/total/*[3])"));
+    }
+
+    @Test
+    void shouldMapCbsGroupInGibsCbs() throws Exception {
+        String xml = generator.generate(emissionWithItems(List.of(itemWithCbsAndRegular())));
+        Document document = parse(xml);
+
+        assertEquals("9.87", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gCBS/pCBS"));
+        assertEquals("2.00", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gCBS/gDif/pDif"));
+        assertEquals("1.60", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gCBS/gDif/vDif"));
+        assertEquals("1.00", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gCBS/gDevTrib/pDevTrib"));
+        assertEquals("0.80", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gCBS/gDevTrib/vDevTrib"));
+        assertEquals("30.00", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gCBS/gRed/pRedAliq"));
+        assertEquals("7.00", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gCBS/gRed/pAliqEfet"));
+        assertEquals("5.40", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gCBS/vCBS"));
+    }
+
+    @Test
+    void shouldMapTribRegularGroupInGibsCbs() throws Exception {
+        String xml = generator.generate(emissionWithItems(List.of(itemWithCbsAndRegular())));
+        Document document = parse(xml);
+
+        assertEquals("100", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gTribRegular/CSTReg"));
+        assertEquals("001001", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gTribRegular/cClassTribReg"));
+        assertEquals("12.3400", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gTribRegular/pAliqEfetRegIBSUF"));
+        assertEquals("1.23", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gTribRegular/vTribRegIBSUF"));
+        assertEquals("5.6700", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gTribRegular/pAliqEfetRegIBSMun"));
+        assertEquals("0.45", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gTribRegular/vTribRegIBSMun"));
+        assertEquals("9.8700", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gTribRegular/pAliqEfetRegCBS"));
+        assertEquals("1.02", xpath(document, "/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/gTribRegular/vTribRegCBS"));
+    }
+
+    @Test
+    void shouldPreserveGibsCbsChildrenOrderWithCbsAndTribRegular() throws Exception {
+        String xml = generator.generate(emissionWithItems(List.of(itemWithCbsAndRegular())));
+        Document document = parse(xml);
+
+        assertEquals("vBC", xpath(document, "name(/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/*[1])"));
+        assertEquals("gIBSUF", xpath(document, "name(/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/*[2])"));
+        assertEquals("gIBSMun", xpath(document, "name(/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/*[3])"));
+        assertEquals("vIBS", xpath(document, "name(/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/*[4])"));
+        assertEquals("gCBS", xpath(document, "name(/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/*[5])"));
+        assertEquals("gTribRegular", xpath(document, "name(/NFe/infNFe/det[1]/imposto/IBSCBS/gIBSCBS/*[6])"));
+    }
+
+    @Test
+    void shouldRejectImportTaxRateWhenInformed() {
+        NfeItem item = itemWithImportTax(new ImportTax(new BigDecimal("100.00"),
+                new BigDecimal("10.00"), new BigDecimal("10.00"),
+                new BigDecimal("1.00"), new BigDecimal("0.50")));
+
+        UnsupportedTaxationException exception = assertThrows(UnsupportedTaxationException.class,
+                () -> generator.generate(emissionWithItems(List.of(item))));
+        assertTrue(exception.getMessage().contains("ImportTax.taxRate is not supported"));
+    }
+
+    @Test
+    void shouldRejectPartialTribRegular() {
+        NfeItem item = itemWithPartialTribRegular();
+
+        assertThrows(UnsupportedTaxationException.class,
+                () -> generator.generate(emissionWithItems(List.of(item))));
+    }
+
     private static NfeEmission emissionWithHeader() {
         return emission("55", 3, 1000L,
                 OffsetDateTime.parse("2026-09-21T10:30:00-03:00"),
@@ -2570,9 +2687,12 @@ class NfeXmlGeneratorTest {
     }
 
     private static ImportTax importTaxFixture() {
+        // taxRate is null here: the official schema has no pII field and a
+        // non-null taxRate is rejected explicitly
+        // (see shouldRejectImportTaxRateWhenInformed).
         return new ImportTax(
                 new BigDecimal("100.00"),
-                new BigDecimal("10.00"),
+                null,
                 new BigDecimal("10.00"),
                 new BigDecimal("5.00"),
                 new BigDecimal("1.50"));
@@ -3066,6 +3186,131 @@ class NfeXmlGeneratorTest {
                 null, null,
                 new ItemTaxation(coreIcms(), null, null, null, null, rtc),
                 null);
+    }
+
+    private static CbsTax cbsFixture() {
+        return new CbsTax(new BigDecimal("9.87"),
+                new RtcDeferral(new BigDecimal("2.00"), new BigDecimal("1.60")),
+                new RtcDevolution(new BigDecimal("1.00"), new BigDecimal("0.80")),
+                new RtcReduction(new BigDecimal("30.00"), new BigDecimal("7.00")),
+                new BigDecimal("5.40"));
+    }
+
+    private static RegularTaxation regularTaxationFixture() {
+        return new RegularTaxation("100", "001001",
+                new BigDecimal("12.3400"), new BigDecimal("1.23"),
+                new BigDecimal("5.6700"), new BigDecimal("0.45"),
+                new BigDecimal("9.8700"), new BigDecimal("1.02"));
+    }
+
+    private static NfeItem itemWithCbsAndRegular() {
+        RtcTaxation rtc = new RtcTaxation("300", "001000", "1",
+                new IbsCbsTaxation(new BigDecimal("100.00"), ufRateAmount(), munRateAmount(),
+                        new BigDecimal("99.99"), cbsFixture(), regularTaxationFixture()));
+        return new NfeItem(
+                "P-24", "CbsReg", "84818090",
+                null, null, null,
+                "UN",
+                new BigDecimal("1"), new BigDecimal("10.50"), new BigDecimal("10.50"),
+                null, null, null,
+                null, null, null, null,
+                "5102", "0",
+                null,
+                null, null,
+                new ItemTaxation(coreIcms(), null, null, null, null, rtc),
+                null);
+    }
+
+    private static NfeItem itemWithImportTax(ImportTax importTax) {
+        return new NfeItem(
+                "P-25", "ImpTaxRate", "84818090",
+                null, null, null,
+                "UN",
+                new BigDecimal("1"), new BigDecimal("10.50"), new BigDecimal("10.50"),
+                null, null, null,
+                null, null, null, null,
+                "5102", "0",
+                null,
+                null, null,
+                new ItemTaxation(null, null, null, importTax, null, null),
+                null);
+    }
+
+    private static NfeItem itemWithPartialTribRegular() {
+        RtcTaxation rtc = new RtcTaxation("300", "001000", "1",
+                new IbsCbsTaxation(new BigDecimal("100.00"), null, null, null, null,
+                        new RegularTaxation("100", null, null, null, null, null, null, null)));
+        return new NfeItem(
+                "P-26", "PartialReg", "84818090",
+                null, null, null,
+                "UN",
+                new BigDecimal("1"), new BigDecimal("10.50"), new BigDecimal("10.50"),
+                null, null, null,
+                null, null, null, null,
+                "5102", "0",
+                null,
+                null, null,
+                new ItemTaxation(null, null, null, null, null, rtc),
+                null);
+    }
+
+    private static NfeEmission emissionWithRtcTotals() {
+        return emissionWithRtcTotals(new IsTotals(new BigDecimal("7.77")), baseOnlyIbsCbsTotals());
+    }
+
+    private static NfeEmission emissionWithRtcTotals(IsTotals isTotals) {
+        return emissionWithRtcTotals(isTotals, baseOnlyIbsCbsTotals());
+    }
+
+    private static NfeEmission emissionWithRtcTotals(IsTotals isTotals, IbsCbsTotals ibsCbsTotals) {
+        return new NfeEmission(
+                "emission-1",
+                "REF-1",
+                OperationType.TRANSFER,
+                EmissionStatus.RECEIVED,
+                "55",
+                3,
+                1000L,
+                OffsetDateTime.parse("2026-09-21T10:30:00-03:00"),
+                "Remessa para industrializa\u00e7\u00e3o",
+                "3550308",
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
+                issuer(),
+                recipient(),
+                List.of(itemWithCbsAndRegular()),
+                null,
+                rtcTaxTotals(isTotals, ibsCbsTotals),
+                null,
+                null,
+                null,
+                null);
+    }
+
+    private static TaxTotals rtcTaxTotals(IsTotals isTotals, IbsCbsTotals ibsCbsTotals) {
+        return new TaxTotals(
+                new IcmsTotals(new BigDecimal("10.50"), new BigDecimal("1.89"), new BigDecimal("0.00"),
+                        new BigDecimal("0.21"), new BigDecimal("0.00"), new BigDecimal("0.00"),
+                        new BigDecimal("0.00"), new BigDecimal("0.00"), new BigDecimal("0.00"),
+                        new BigDecimal("0.00"), new BigDecimal("0.00")),
+                new BigDecimal("0.30"), new BigDecimal("0.50"), new BigDecimal("0.10"),
+                new BigDecimal("0.40"), new BigDecimal("0.60"), new BigDecimal("4.35"),
+                isTotals,
+                ibsCbsTotals);
+    }
+
+    private static IbsCbsTotals baseOnlyIbsCbsTotals() {
+        return new IbsCbsTotals(new BigDecimal("200.00"), null, null, null, null);
+    }
+
+    private static IbsCbsTotals fullIbsCbsTotals() {
+        return new IbsCbsTotals(new BigDecimal("200.00"),
+                new IbsJurisdictionTotals(new BigDecimal("3.00"), new BigDecimal("2.00"),
+                        new BigDecimal("88.50")),
+                new IbsJurisdictionTotals(new BigDecimal("1.00"), new BigDecimal("0.50"),
+                        new BigDecimal("11.49")),
+                new BigDecimal("99.99"),
+                new CbsTotals(new BigDecimal("1.20"), new BigDecimal("0.80"),
+                        new BigDecimal("5.40")));
     }
 
     private static Document parse(String xml) throws Exception {
