@@ -778,6 +778,7 @@ public class NfeXmlMapper {
         dest.setDocument(recipient.document());
         dest.setAddress(toEnderDest(recipient.address()));
         dest.setIeStatusIndicator(toIndIeDest(recipient.ieStatus()));
+        dest.setStateRegistration(recipient.stateRegistration());
         return dest;
     }
 

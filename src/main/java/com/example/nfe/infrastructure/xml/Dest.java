@@ -7,7 +7,7 @@ import jakarta.xml.bind.annotation.XmlElement;
 /**
  * JAXB representation of the NF-e {@code dest} group, in the exact PL_010f
  * sequence for the fields the domain provides: CNPJ (of the CNPJ|CPF|
- * idEstrangeiro choice), xNome, enderDest, indIEDest. IE, ISUF, IM and
+ * idEstrangeiro choice), xNome, enderDest, indIEDest, IE. ISUF, IM and
  * email are omitted because the domain does not provide them.
  */
 @XmlAccessorType(XmlAccessType.FIELD)
@@ -24,6 +24,9 @@ public class Dest {
 
     @XmlElement(name = "indIEDest")
     private String ieStatusIndicator;
+
+    @XmlElement(name = "IE")
+    private String stateRegistration;
 
     public String getDocument() {
         return document;
@@ -55,5 +58,13 @@ public class Dest {
 
     public void setIeStatusIndicator(String ieStatusIndicator) {
         this.ieStatusIndicator = ieStatusIndicator;
+    }
+
+    public String getStateRegistration() {
+        return stateRegistration;
+    }
+
+    public void setStateRegistration(String stateRegistration) {
+        this.stateRegistration = stateRegistration;
     }
 }

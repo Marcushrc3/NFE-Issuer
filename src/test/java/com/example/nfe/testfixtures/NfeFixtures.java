@@ -161,7 +161,7 @@ public final class NfeFixtures {
     private static Recipient recipient() {
         return new Recipient("Beta Corp", "98765432000188",
                 new Address("Rua B", "200", "Sao Paulo", "SP", "01310200", "Centro", "3550308"),
-                RecipientIeStatus.CONTRIBUTOR);
+                RecipientIeStatus.CONTRIBUTOR, "123456789012");
     }
 
     private static NfeItem item() {

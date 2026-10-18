@@ -40,6 +40,8 @@ import com.example.nfe.infrastructure.xml.validation.NfeXmlValidator;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.xml.sax.InputSource;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -70,6 +72,21 @@ class NfeXmlGeneratorTest {
 
         assertTrue(xml.contains("<NFe"), "expected NFe root element");
         assertTrue(xml.contains(NF_NAMESPACE), "expected NF-e namespace");
+    }
+
+    @Test
+    void shouldNotDeclareUnusedNamespacesOnRoot() throws Exception {
+        String xml = generator.generate(emissionWithParties(issuer(), recipient()));
+        Document document = parse(xml);
+
+        Element root = document.getDocumentElement();
+        NamedNodeMap attributes = root.getAttributes();
+        for (int i = 0; i < attributes.getLength(); i++) {
+            String name = attributes.item(i).getNodeName();
+            assertTrue(name.equals("xmlns") || !name.startsWith("xmlns"),
+                    "unexpected namespace declaration on root: " + name);
+        }
+        assertEquals(NF_NAMESPACE, root.getAttribute("xmlns"));
     }
 
     @Test
@@ -150,6 +167,15 @@ class NfeXmlGeneratorTest {
 
         assertEquals("Beta Corp", xpath(document, "/NFe/infNFe/dest/xNome"));
         assertEquals("98765432000188", xpath(document, "/NFe/infNFe/dest/CNPJ"));
+    }
+
+    @Test
+    void shouldMapRecipientStateRegistrationToXml() throws Exception {
+        String xml = generator.generate(emissionWithParties(issuer(), recipientWithStateRegistration()));
+        Document document = parse(xml);
+
+        assertEquals("123456789012", xpath(document, "/NFe/infNFe/dest/IE"));
+        assertEquals("IE", xpath(document, "name(/NFe/infNFe/dest/*[5])"));
     }
 
     @Test
@@ -2273,6 +2299,11 @@ class NfeXmlGeneratorTest {
 
     private static Recipient recipientWithIeStatus() {
         return new Recipient("Beta Corp", "98765432000188", address(), RecipientIeStatus.CONTRIBUTOR);
+    }
+
+    private static Recipient recipientWithStateRegistration() {
+        return new Recipient("Beta Corp", "98765432000188", address(),
+                RecipientIeStatus.CONTRIBUTOR, "123456789012");
     }
 
     private static Recipient recipientWithoutAddress() {

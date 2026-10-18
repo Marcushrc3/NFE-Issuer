@@ -278,7 +278,8 @@ public class NfeEmissionService {
     }
 
     private Recipient toRecipient(RecipientDto dto) {
-        return new Recipient(dto.name(), dto.document(), dto.address(), dto.ieStatus());
+        return new Recipient(dto.name(), dto.document(), dto.address(), dto.ieStatus(),
+                dto.stateRegistration());
     }
 
     private List<NfeItem> toItems(List<ItemDto> items) {

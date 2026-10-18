@@ -571,6 +571,14 @@ class NfeEmissionServiceTest {
         NfeEmission emission = service.toDomain("emission-12", transferRequest());
 
         assertNull(emission.recipient().ieStatus());
+        assertNull(emission.recipient().stateRegistration());
+    }
+
+    @Test
+    void shouldMapRecipientStateRegistrationToDomain() {
+        NfeEmission emission = service.toDomain("emission-34", requestWithRecipientStateRegistration());
+
+        assertEquals("123456789012", emission.recipient().stateRegistration());
     }
 
     @Test
@@ -859,6 +867,22 @@ class NfeEmissionServiceTest {
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 issuer(),
                 new RecipientDto("Beta Corp", "98765432000188", RecipientIeStatus.EXEMPT),
+                items(),
+                null,
+                null,
+                null,
+                null);
+    }
+
+    private static NfeEmissionRequest requestWithRecipientStateRegistration() {
+        return new NfeEmissionRequest(
+                "REF-014",
+                OperationType.TRANSFER,
+                null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
+                issuer(),
+                new RecipientDto("Beta Corp", "98765432000188", RecipientIeStatus.CONTRIBUTOR,
+                        "123456789012", null),
                 items(),
                 null,
                 null,
