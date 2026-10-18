@@ -109,6 +109,47 @@ For local `EMIT` testing there is a committed TEST-ONLY self-signed keystore (`s
 
 > The project has **not** performed a real SEFAZ authorization: the integration tests use an in-process SEFAZ mock (SOAP 1.2 `NFeAutorizacao4` responses). This is not a production-readiness statement.
 
+### TLS com a SEFAZ (cadeia ICP-Brasil)
+
+O endpoint de homologação SEFAZ-SP usa certificado TLS emitido pela cadeia
+**ICP-Brasil** (raiz `Autoridade Certificadora Raiz Brasileira v10`), que **não**
+está no truststore padrão do JDK — sem configuração, o transmissor falha o
+handshake TLS com `PKIX path building failed`. A validação de certificados nunca
+deve ser desativada.
+
+A raiz oficial está empacotada em `src/main/resources/trust/icp-brasil-v10.pem`
+(fonte: ITI — Repositório AC-Raiz,
+`https://www.gov.br/iti/pt-br/assuntos/repositorio/repositorio-ac-raiz`).
+Crie um truststore dedicado **fora do repositório**:
+
+```powershell
+keytool -importcert -noprompt -alias icp-brasil-v10 `
+  -file src\main\resources\trust\icp-brasil-v10.pem `
+  -keystore C:\caminho\seguro\sefaz-truststore.p12 -storetype PKCS12 `
+  -storepass <SENHA-ESCOLHIDA-PELO-OPERADOR>
+```
+
+Inicie a aplicação apontando para ele (a senha vem de variável/cofre do ambiente,
+nunca de código nem de arquivo versionado):
+
+```powershell
+mvn spring-boot:run "-Dspring-boot.run.jvmArguments=-Djavax.net.ssl.trustStore=C:\caminho\seguro\sefaz-truststore.p12 -Djavax.net.ssl.trustStorePassword=%NFE_TRUSTSTORE_PASSWORD%"
+```
+
+Teste de conectividade manual (não envia NF-e; faz GET — o **403** esperado prova
+que o handshake TLS funcionou):
+
+```powershell
+mvn test -Dnfe.sefaz.connectivity=true -Dtest=NfeSefazHomologationConnectivityTest `
+  "-Djavax.net.ssl.trustStore=C:\caminho\seguro\sefaz-truststore.p12" `
+  "-Djavax.net.ssl.trustStorePassword=%NFE_TRUSTSTORE_PASSWORD%"
+```
+
+> O servidor de homologação rejeita HTTP/2 (`RST_STREAM: Use HTTP/1.1`). O teste
+> de conectividade usa HTTP/1.1 explicitamente; o transmissor atual usa o default
+> do `HttpClient` — antes da primeira transmissão real é necessário fixar HTTP/1.1
+> no transmissor (pendência registrada para o incremento da primeira transmissão).
+
 ## API
 
 ### `POST /api/v1/nfe` — issue an NF-e
@@ -148,4 +189,4 @@ Notable test suites:
 - `NfeAccessKeyGeneratorTest` — official modulo-11 check digit.
 - `NfeEmissionFlowIntegrationTest` — full HTTP end-to-end flow against an in-process SEFAZ mock (no real SEFAZ contact, no production certificates).
 
-> Current known state: the full suite runs with `mvn test` — **494 tests, 0 failures, 0 errors, 1 skipped** (`NfeSefazTransmitterIntegrationTest`, which requires a real SEFAZ environment and is `@Disabled` by design). All HTTP end-to-end scenarios in `NfeEmissionFlowIntegrationTest` (XML_ONLY and EMIT against an in-process SEFAZ mock) pass.
+> Current known state: the full suite runs with `mvn test` — **495 tests, 0 failures, 0 errors, 1 skipped** (`NfeSefazTransmitterIntegrationTest`, which requires a real SEFAZ environment and is `@Disabled` by design). All HTTP end-to-end scenarios in `NfeEmissionFlowIntegrationTest` (XML_ONLY and EMIT against an in-process SEFAZ mock) pass.
